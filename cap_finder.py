@@ -1,7 +1,8 @@
-import scipy, cvxpy, pprint, itertools
+import math, scipy, cvxpy, pprint, itertools
 import numpy as np
 from scipy.spatial import ConvexHull
 
+from plot_utils import *
 from conf_gen import *
 from log_utils import *
 
@@ -83,10 +84,54 @@ class CapFinder(object):
     blog(r=r, C=C, M=M)
     return r, M, C
   
-  # def cap_x_y_l
+  def cap_x_y_l(self):
+    r, M, C = cf.r_M_C()
+    p_l = []
+    
+    x = cvxpy.Variable(shape=(r, 1), name='x')
+    counter = 1
+    while counter < 10**self.k:
+      counter_str = str(counter).zfill(self.k)
+      l = [int(char) for char in counter_str]
+      length = math.sqrt(sum([e**2 for e in l] ) )
+      w = np.array(l).reshape((1, self.k))/length
+      
+      # blog(w=w)
+      w_ = np.dot(w, C) # w*C
+      # blog(w_=w_)
+      obj = cvxpy.Maximize(w_*x)
+      
+      constraints = [M*x == 1, x >= 0] # [M*x <= 1, x >= 0]
+      prob = cvxpy.Problem(obj, constraints)
+      prob.solve()
+      y = np.dot(C, x.value)
+      # blog(prob=prob, status=prob.status, opt_val=prob.value, y=y)
+      p_l.append(tuple(map(tuple, y) ) )
+      
+      counter += 1
+    return p_l
+  
+  def plot_2d_servcap(self):
+    p_l = self.cap_x_y_l()
+    x_l, y_l = [], []
+    for p in p_l:
+      x_l.append(p[0] )
+      y_l.append(p[1] )
+    
+    plot.plot(x_l, y_l, c=NICE_BLUE, marker='o', ls=':')
+    prettify(plot.gca() )
+    plot.title('n= {}, k= {}'.format(self.n, self.k) )
+    plot.xlabel('a', fontsize=14)
+    plot.ylabel('b', fontsize=14)
+    fig.set_size_inches(5, 5)
+    plot.savefig('plot_2d_servcap_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
+    plot.gcf().clear()
+    log(INFO, "done.")
   
 if __name__ == "__main__":
   # G = conf_mds_matrix(3, k=2)
   G = conf_mds_matrix(4, k=2)
   cf = CapFinder(G)
-  r, M, C = cf.r_M_C()
+  # r, M, C = cf.r_M_C()
+  # cf.cap_x_y_l()
+  cf.plot_2d_servcap()
