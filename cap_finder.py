@@ -84,7 +84,7 @@ class CapFinder(object):
     blog(r=r, C=C, M=M)
     return r, M, C
   
-  def cap_x_y_l(self):
+  def cap_point_l(self):
     r, M, C = cf.r_M_C()
     p_l = []
     
@@ -106,32 +106,46 @@ class CapFinder(object):
       prob.solve()
       y = np.dot(C, x.value)
       # blog(prob=prob, status=prob.status, opt_val=prob.value, y=y)
-      p_l.append(tuple(map(tuple, y) ) )
+      # p_l.append(tuple(map(tuple, y) ) )
+      # y = (e[0] for e in y)
+      p_l.append([e[0] for e in tuple(y) ] )
       
       counter += 1
     return p_l
   
   def plot_2d_servcap(self):
-    p_l = self.cap_x_y_l()
-    x_l, y_l = [], []
-    for p in p_l:
-      x_l.append(p[0] )
-      y_l.append(p[1] )
+    point_l = self.cap_point_l()
+    point_l.append((0, 0))
+    # print("point_l= {}".format(point_l) )
     
-    plot.plot(x_l, y_l, c=NICE_BLUE, marker='o', ls=':')
+    # x_l, y_l = [], []
+    # for x_y in point_l:
+    #   x_l.append(x_y[0] )
+    #   y_l.append(x_y[1] )
+    # plot.plot(x_l, y_l, c=NICE_BLUE, marker='o', ls=':')
+    
+    points_inrows = np.array(point_l).reshape((len(point_l), self.k))
+    # print("points_inrows= \n{}".format(points_inrows) )
+    hull = ConvexHull(points_inrows)
+    for simplex in hull.simplices:
+      plot.plot(points_inrows[simplex, 0], points_inrows[simplex, 1], 'k-')
+    plot.plot(points_inrows[hull.vertices, 0], points_inrows[hull.vertices, 1], 'r--', lw=2)
+    plot.plot(points_inrows[hull.vertices[0], 0], points_inrows[hull.vertices[0], 1], 'ro')
+    
     prettify(plot.gca() )
     plot.title('n= {}, k= {}'.format(self.n, self.k) )
     plot.xlabel('a', fontsize=14)
     plot.ylabel('b', fontsize=14)
+    fig = plot.gcf()
     fig.set_size_inches(5, 5)
     plot.savefig('plot_2d_servcap_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
-    plot.gcf().clear()
+    fig.clear()
     log(INFO, "done.")
   
 if __name__ == "__main__":
   # G = conf_mds_matrix(3, k=2)
-  G = conf_mds_matrix(4, k=2)
+  G = conf_mds_matrix(5, k=2)
   cf = CapFinder(G)
   # r, M, C = cf.r_M_C()
-  # cf.cap_x_y_l()
+  # cf.cap_point_l()
   cf.plot_2d_servcap()
