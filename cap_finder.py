@@ -141,7 +141,7 @@ class CapFinder(object):
     plot.savefig('plot_2d_servcap_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
     fig.clear()
     log(INFO, "done.")
-  
+
 if __name__ == "__main__":
   # G = conf_mds_matrix(3, k=2)
   G = conf_mds_matrix(5, k=2)

@@ -5,8 +5,8 @@ PY=python3
 
 if [ $1 = 'c' ]; then
   $PY cap_finder.py
-elif [ $1 = 's' ]; then
-  $PY sim_exp.py
+elif [ $1 = 'p' ]; then
+  $PY popularity.py
 else
   echo "Arg did not match!"
 fi
