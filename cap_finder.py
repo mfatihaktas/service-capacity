@@ -1,6 +1,7 @@
 import math, scipy, cvxpy, pprint, itertools
 import numpy as np
-from scipy.spatial import ConvexHull
+from scipy import spatial
+from fillplots import plot_regions
 
 from plot_utils import *
 from conf_gen import *
@@ -84,7 +85,7 @@ class CapFinder(object):
     blog(r=r, C=C, M=M)
     return r, M, C
   
-  def cap_point_l(self):
+  def cap_boundary_point_l(self):
     r, M, C = cf.r_M_C()
     p_l = []
     
@@ -113,26 +114,58 @@ class CapFinder(object):
       counter += 1
     return p_l
   
-  def plot_2d_servcap(self):
-    point_l = self.cap_point_l()
+  def cap_hyperplane(self):
+    point_l = self.cap_boundary_point_l()
     point_l.append((0, 0))
-    # print("point_l= {}".format(point_l) )
+    points_inrows = np.array(point_l).reshape((len(point_l), self.k))
+    hull = scipy.spatial.ConvexHull(points_inrows)
     
-    # x_l, y_l = [], []
-    # for x_y in point_l:
-    #   x_l.append(x_y[0] )
-    #   y_l.append(x_y[1] )
-    # plot.plot(x_l, y_l, c=NICE_BLUE, marker='o', ls=':')
+    # `hull` := {x| Ax <= b}
+    m, n = hull.equations.shape
+    A = np.mat(hull.equations[:, 0:n-1] )
+    b = np.mat(-hull.equations[:, n-1] ).T
+    # blog(A=A, b=b)
+    return A, b
+  
+  def plot_2d_servcap(self):
+    '''
+    point_l = self.cap_boundary_point_l()
+    point_l.append((0, 0))
     
     points_inrows = np.array(point_l).reshape((len(point_l), self.k))
-    # print("points_inrows= \n{}".format(points_inrows) )
-    hull = ConvexHull(points_inrows)
+    hull = scipy.spatial.ConvexHull(points_inrows)
     for simplex in hull.simplices:
-      plot.plot(points_inrows[simplex, 0], points_inrows[simplex, 1], 'k-')
-    plot.plot(points_inrows[hull.vertices, 0], points_inrows[hull.vertices, 1], 'r--', lw=2)
-    plot.plot(points_inrows[hull.vertices[0], 0], points_inrows[hull.vertices[0], 1], 'ro')
+      # print("x_l= {}, y_l= {}".format(points_inrows[simplex, 0], points_inrows[simplex, 1] ) )
+      plot.plot(points_inrows[simplex, 0], points_inrows[simplex, 1], c=NICE_BLUE, marker='o', ls='-', lw=3)
+    # plot.plot(points_inrows[hull.vertices, 0], points_inrows[hull.vertices, 1], 'r--', lw=2)
+    # plot.plot(points_inrows[hull.vertices[0], 0], points_inrows[hull.vertices[0], 1], 'ro')
     
-    prettify(plot.gca() )
+    plot.fill(points_inrows[simplex, 0], points_inrows[simplex, 1], c=NICE_BLUE, alpha=0.5)
+    '''
+    
+    # plot_regions([[(lambda x: (1.0 - x ** 2) ** 0.5, True), (lambda x: x,) ] ], xlim=(0, 1), ylim=(0, 1) )
+    A, b = self.cap_hyperplane()
+    blog(A=A, b=b)
+    # for i in range(A.shape[0] ):
+    #   print("A[i, 0]= {}, A[i, 1]= {}".format(A[i, 0], A[i, 1] ) )
+    
+    eq_l = [lambda x, i=i: b[i, 0]/A[i, 1] - A[i, 0]/A[i, 1]*x for i in range(A.shape[0] ) if A[i, 0] > 0.001]
+    x_l = [x for x in np.linspace(0, 5, 20) ]
+    # for i, eq in enumerate(eq_l):
+    #   plot.plot(x_l, [eq(x) for x in x_l], label='i= {}'.format(i), c=next(dark_color), marker='.', ls=':')
+    # plot.xlim((0, 10))
+    # plot.ylim((0, 10))
+    
+    plot.legend()
+    plot_regions(
+      [[(eq, True) for eq in eq_l] ],
+      xlim=(0, 10), ylim=(0, 10) )
+    
+    # plot_regions(
+    #   [[(lambda x: 1 - x, True), (lambda x: 2 - 4*x, True) ] ],
+    #   xlim=(0, 1), ylim=(0, 1) )
+    
+    # prettify(plot.gca() )
     plot.title('n= {}, k= {}'.format(self.n, self.k) )
     plot.xlabel('a', fontsize=14)
     plot.ylabel('b', fontsize=14)
@@ -143,9 +176,9 @@ class CapFinder(object):
     log(INFO, "done.")
 
 if __name__ == "__main__":
-  # G = conf_mds_matrix(3, k=2)
   G = conf_mds_matrix(5, k=2)
   cf = CapFinder(G)
   # r, M, C = cf.r_M_C()
-  # cf.cap_point_l()
+  # cf.cap_boundary_point_l()
   cf.plot_2d_servcap()
+  # cf.cap_hyperplane()
