@@ -124,8 +124,52 @@ class CapFinder(object):
     m, n = hull.equations.shape
     A = np.mat(hull.equations[:, 0:n-1] )
     b = np.mat(-hull.equations[:, n-1] ).T
+    # A = A[A > 0.001]
+    # b = b[b > 0.001]
+    A[A < 0.001] = 0
+    rowi_tokeep_l = []
+    for i in range(A.shape[0] ):
+      if A[i, :].sum() > 0.001:
+        rowi_tokeep_l.append(i)
+    A = A[rowi_tokeep_l, :]
+    b = b[rowi_tokeep_l, :]
+    
     # blog(A=A, b=b)
     return A, b
+  
+  def integrate_jointpdf_overcaphyperlane(self, jointpdf):
+    A, b = self.cap_hyperplane()
+    blog(A=A, b=b)
+    
+    ranges = []
+    for i in range(self.k):
+      if i == 0:
+        ranges.append((0, self.n) )
+      else:
+        def u(*args, i=i):
+          # print("u:: i= {}".format(i) )
+          A_ = A[:, [j for j in range(self.k) if j != i] ]
+          x_ = np.array(args).reshape((self.k-1, 1))
+          # blog(A_=A_, x_=x_)
+          
+          b_ = b - A_*x_
+          a = A[:, i]
+          # blog(b_=b_, a=a)
+          for j in range(a.shape[0] ):
+            b_[j, 0] /= a[j, 0]
+          # print("final b_= {}".format(b_) )
+          max_val = b_.min() # b_.max()
+          return max(max_val, 0)
+        ranges.append(u)
+        # ranges.append((0, self.n) )
+    # Plot to check if u() works
+    x_l = np.linspace(*ranges[0], 50)
+    y_l = [ranges[1](x) for x in x_l]
+    plot.plot(x_l, y_l, c=NICE_BLUE, marker='o', ls=':')
+    plot.savefig('plot_deneme.png', bbox_inches='tight')
+    
+    # result, abserr = scipy.integrate.nquad(jointpdf, ranges)
+    # blog(result=result, abserr=abserr)
   
   def plot_2d_servcap(self):
     '''
@@ -176,9 +220,15 @@ class CapFinder(object):
     log(INFO, "done.")
 
 if __name__ == "__main__":
-  G = conf_mds_matrix(5, k=2)
+  G = conf_mds_matrix(10, k=2)
   cf = CapFinder(G)
   # r, M, C = cf.r_M_C()
   # cf.cap_boundary_point_l()
   cf.plot_2d_servcap()
   # cf.cap_hyperplane()
+  cf.integrate_jointpdf_overcaphyperlane(lambda x, y: 1)
+  
+  # M = np.array(list(range(16) ) ).reshape((4, 4))
+  # M_ = M[:, [1, 2]] # M[[1, 2],]
+  # blog(M=M, M_=M_)
+  
