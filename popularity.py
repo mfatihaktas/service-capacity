@@ -16,6 +16,8 @@ class PopModel_wZipf(object):
     self.k = k
     self.zipf_tailindex_rv = zipf_tailindex_rv
     self.arrate_rv = arrate_rv
+    
+    self.kernel = self.gaussian_kde()
   
   def __repr__(self):
     return 'PopModel_wZipf[k= {}, zipf_tailindex_rv= {}, arrate_rv= {}]'.format(self.k, self.zipf_tailindex_rv, self.arrate_rv)
@@ -34,6 +36,19 @@ class PopModel_wZipf(object):
         p_l.reverse()
       l.append(np.array(p_l)*self.arrate_rv.sample() )
     return l
+  
+  def gaussian_kde(self):
+    cap_l = self.cap_l(npoints=10000)
+    # kernel = scipy.stats.gaussian_kde(self.cap_l(npoints=1000) )
+    
+    values = np.array(cap_l).reshape((self.k, len(cap_l) ))
+    # blog(values=values)
+    kernel = scipy.stats.gaussian_kde(values) # bw_method='silverman'
+    return kernel
+  
+  def joint_pdf(self, x_l):
+    x = np.array(x_l).reshape((self.k, 1))
+    return self.kernel(x)[0]
   
   def plot_heatmap_2d(self):
     cap_l = self.cap_l(npoints=1000)
@@ -60,19 +75,12 @@ class PopModel_wZipf(object):
     log(INFO, "done.")
   
   def plot_kde_2d(self):
-    cap_l = self.cap_l(npoints=10000)
-    # kernel = scipy.stats.gaussian_kde(self.cap_l(npoints=1000) )
-    
-    values = np.array(cap_l).reshape((self.k, len(cap_l) ))
-    # blog(values=values)
-    kernel = scipy.stats.gaussian_kde(values) # bw_method='silverman'
-    
     xmin, xmax = min(values[0, :]), max(values[0, :])
     ymin, ymax = min(values[1, :]), max(values[1, :])
     X, Y = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
     positions = np.vstack([X.ravel(), Y.ravel() ] )
     # blog(positions=positions)
-    Z = np.reshape(kernel(positions).T, X.shape)
+    Z = np.reshape(self.kernel(positions).T, X.shape)
     # blog(Z=Z)
     
     plot.imshow(np.rot90(Z), cmap=plot.cm.gist_earth_r, extent=[xmin, xmax, ymin, ymax] )
