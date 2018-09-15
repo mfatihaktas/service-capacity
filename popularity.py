@@ -6,7 +6,7 @@ import matplotlib.pyplot as plot
 import numpy as np
 import pandas as pd
 import scipy, seaborn
-seaborn.set(style="white", color_codes=True)
+seaborn.set(style='white', color_codes=True)
 
 from log_utils import *
 from rvs import *
@@ -17,7 +17,7 @@ class PopModel_wZipf(object):
     self.zipf_tailindex_rv = zipf_tailindex_rv
     self.arrate_rv = arrate_rv
     
-    self.kernel = self.gaussian_kde()
+    self.kernel, self.max_l = self.gaussian_kde()
   
   def __repr__(self):
     return 'PopModel_wZipf[k= {}, zipf_tailindex_rv= {}, arrate_rv= {}]'.format(self.k, self.zipf_tailindex_rv, self.arrate_rv)
@@ -37,18 +37,17 @@ class PopModel_wZipf(object):
       l.append(np.array(p_l)*self.arrate_rv.sample() )
     return l
   
-  def gaussian_kde(self):
-    cap_l = self.cap_l(npoints=10000)
-    # kernel = scipy.stats.gaussian_kde(self.cap_l(npoints=1000) )
-    
+  def gaussian_kde(self, npoints=10000):
+    cap_l = self.cap_l(npoints)
     values = np.array(cap_l).reshape((self.k, len(cap_l) ))
     # blog(values=values)
+    
+    max_l = np.amax(values, axis=1).tolist()
     kernel = scipy.stats.gaussian_kde(values) # bw_method='silverman'
-    return kernel
+    return kernel, max_l
   
-  def joint_pdf(self, x_l):
-    x = np.array(x_l).reshape((self.k, 1))
-    return self.kernel(x)[0]
+  def joint_pdf(self, *args):
+    return self.kernel(np.array(args).reshape((self.k, 1)) )[0]
   
   def plot_heatmap_2d(self):
     cap_l = self.cap_l(npoints=1000)
@@ -75,6 +74,9 @@ class PopModel_wZipf(object):
     log(INFO, "done.")
   
   def plot_kde_2d(self):
+    cap_l = self.cap_l(npoints=10000)
+    
+    values = np.array(cap_l).reshape((self.k, len(cap_l) ))
     xmin, xmax = min(values[0, :]), max(values[0, :])
     ymin, ymax = min(values[1, :]), max(values[1, :])
     X, Y = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
