@@ -4,7 +4,7 @@ from cap_finder import *
 from popularity import *
 
 if __name__ == "__main__":
-  pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1.2, 1), arrate_rv=TNormal(3, 1) )
+  pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1.2, 1), arrate_rv=TNormal(1.5, 1) )
   
   # for x in np.linspace(0, 2, 10):
   #   for y in np.linspace(0, 2, 10):
@@ -19,6 +19,6 @@ if __name__ == "__main__":
   
   G = conf_mds_matrix(5, k=2)
   cf = ConfInspector(G)
-  # cf.plot_all_2d(pm)
-  EC = cf.moment_cost(pm.joint_pdf, i=1)
-  blog(EC=EC)
+  cf.plot_all_2d(pm)
+  # EC = cf.moment_cost(pm.joint_pdf, i=1)
+  # blog(EC=EC)

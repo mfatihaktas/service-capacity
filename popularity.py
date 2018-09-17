@@ -8,6 +8,7 @@ import pandas as pd
 import scipy, seaborn
 seaborn.set(style='white', color_codes=True)
 
+from plot_utils import *
 from log_utils import *
 from rvs import *
 
@@ -89,6 +90,10 @@ class PopModel_wZipf(object):
     plot.plot(values[0, :], values[1, :], 'k.', markersize=2)
     plot.xlim([xmin, xmax] )
     plot.ylim([ymin, ymax] )
+    plot.xlabel('a', fontsize=14)
+    plot.ylabel('b', fontsize=14)
+    plot.title(r'$\lambda \sim {}$, $\alpha \sim {}$'.format(self.arrate_rv, self.zipf_tailindex_rv), fontsize=14)
+    prettify(plot.gca() )
     fig = plot.gcf()
     fig.set_size_inches(5, 5)
     plot.savefig('plot_kde_2d.png', bbox_inches='tight')

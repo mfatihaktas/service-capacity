@@ -5,6 +5,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plot
 import itertools
 
+from log_utils import *
+
 NICE_BLUE = '#66b3ff'
 NICE_RED = '#ff9999'
 NICE_GREEN = '#99ff99'
@@ -20,26 +22,18 @@ skinny_marker_l = ['x', '+', '1', '2', '3', '4']
 mew, ms = 1, 2 # 3, 5
 
 def prettify(ax):
+  plot.tick_params(top='off', right='off', which='both')
   ax.patch.set_alpha(0.2)
   ax.spines['right'].set_visible(False)
   ax.spines['top'].set_visible(False)
 
-def plot_hull(x_y_l, fname, title):
-  # ps = np.empty((len(x_y_l), 2))
-  # for i, x_y in enumerate(x_y_l):
-  #   # ps[i, :] = [[p[0], p[1]]]
-  #   ps[i, 0] = x_y[0]
-  #   ps[i, 1] = x_y[1]
+def plot_points(x_y_l, fname):
+  x_l, y_l = [], []
+  for x_y in x_y_l:
+    x_l.append(x_y[0] )
+    y_l.append(x_y[1] )
   
-  # print("ps= {}".format(ps) )
-  # plot.plot(ps[:,0], ps[:,1], 'o')
-  
-  plot.plot(ps[:,0], ps[:,1], 'o')
-  
-  """
-  hull = ConvexHull(ps)
-  for simplex in hull.simplices:
-    plot.plot(ps[simplex, 0], ps[simplex, 1], 'k-')
-  plot.plot(ps[hull.vertices,0], ps[hull.vertices,1], 'r--', lw=2)
-  plot.plot(ps[hull.vertices[0],0], ps[hull.vertices[0],1], 'ro')
-  """
+  plot.plot(x_l, y_l, color=NICE_BLUE, marker='o', ls='None')
+  plot.savefig('{}.png'.format(fname), bbox_inches='tight')
+  plot.gcf().clear()
+  log(INFO, "done.")

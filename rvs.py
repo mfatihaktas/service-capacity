@@ -42,7 +42,7 @@ class TNormal(RV):
   
   def __repr__(self):
     # return 'TNormal[mu= {}, sigma= {}]'.format(self.mu, self.sigma)
-    return r'N(\mu= {}, \sigma= {})'.format(self.mu, self.sigma)
+    return r'N^+(\mu= {}, \sigma= {})'.format(self.mu, self.sigma)
   
   def cdf(self, x):
     return self.dist.cdf(x)
