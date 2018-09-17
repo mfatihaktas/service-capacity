@@ -72,11 +72,12 @@ class ConfInspector(object):
           if skip:
             continue
           l = [self.G[:, i] for i in subset]
-          A = np.array(l).reshape((self.k, len(l) ))
+          # A = np.array(l).reshape((self.k, len(l) ))
+          A = np.column_stack(l)
           # print("\n")
           x, residuals, _, _ = np.linalg.lstsq(A, y)
-          # log(INFO, "", A=A, y=y, x=x, residuals=residuals)
-          if np.sum(residuals) < 0.0001:
+          log(INFO, "", A=A, y=y, x=x, residuals=residuals)
+          if residuals.size > 0 and np.sum(residuals) < 0.0001:
             repgroup_l.append(subset)
       sys__repgroup_l_l[s] = repgroup_l
     # blog(sys__repgroup_l_l=sys__repgroup_l_l)
@@ -246,6 +247,7 @@ class ConfInspector(object):
     
     # prettify(plot.gca() )
     # plot.title('n= {}, k= {}'.format(self.n, self.k) )
+    plot.title('{}'.format(self.to_sysrepr() ) )
     plot.xlabel(r'$\lambda_a$', fontsize=16)
     plot.ylabel(r'$\lambda_b$', fontsize=16)
     fig = plot.gcf()
