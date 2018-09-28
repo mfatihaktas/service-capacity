@@ -9,6 +9,8 @@ elif [ $1 = 'p' ]; then
   $PY popularity.py
 elif [ $1 = 'e' ]; then
   $PY exp.py
+elif [ $1 = 'b' ]; then
+  $PY bucket_model.py
 else
   echo "Arg did not match!"
 fi

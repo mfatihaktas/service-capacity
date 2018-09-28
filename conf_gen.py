@@ -20,9 +20,12 @@ def mds_conf_matrix(n, k=2):
 
 def custom_conf_matrix(n, k=2):
   if n == 4:
+    # G = np.array([
+    #   [1, 0, 1, 0],
+    #   [0, 1, 0, 1] ])
     G = np.array([
-      [1, 0, 1, 0],
-      [0, 1, 0, 1] ])
+      [1, 0, 1, 1],
+      [0, 1, 1, 0] ])
   elif n == 3:
     G = np.array([
       [1, 0, 1],

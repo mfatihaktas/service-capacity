@@ -12,12 +12,12 @@ if __name__ == "__main__":
   #     print("at [{}, {}], pdf= {}".format(x, y, p) )
   
   # for n in range(3, 10):
-  #   G = conf_mds_matrix(n, k=2)
+  #   G = mds_conf_matrix(n, k=2)
   #   ci = ConfInspector(G)
   #   covered_pdf_mass = ci.integrate_jointpdf_overcaphyperlane(pm.joint_pdf)
   #   print("n= {}, covered_pdf_mass= {}".format(n, covered_pdf_mass) )
   
-  G = conf_mds_matrix(5, k=2)
+  G = mds_conf_matrix(4, k=2)
   cf = ConfInspector(G)
   cf.plot_all_2d(pm)
   # EC = cf.moment_cost(pm.joint_pdf, i=1)

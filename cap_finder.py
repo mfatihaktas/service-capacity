@@ -44,8 +44,8 @@ class ConfInspector(object):
     for c in range(self.n):
       l = []
       for r in range(self.k):
-        if G[r, c] != 0:
-          num = int(G[r, c])
+        if self.G[r, c] != 0:
+          num = int(self.G[r, c] )
           l.append('{}{}'.format(num, sym_l[r] ) if num != 1 else '{}'.format(sym_l[r] ) )
       node_l.append('+'.join(l) )
     return str(node_l)
@@ -76,8 +76,9 @@ class ConfInspector(object):
           A = np.column_stack(l)
           # print("\n")
           x, residuals, _, _ = np.linalg.lstsq(A, y)
-          log(INFO, "", A=A, y=y, x=x, residuals=residuals)
-          if residuals.size > 0 and np.sum(residuals) < 0.0001:
+          residuals = y - np.dot(A, x)
+          # log(INFO, "", A=A, y=y, x=x, residuals=residuals)
+          if np.sum(np.absolute(residuals) ) < 0.0001: # residuals.size > 0 and 
             repgroup_l.append(subset)
       sys__repgroup_l_l[s] = repgroup_l
     # blog(sys__repgroup_l_l=sys__repgroup_l_l)
@@ -245,13 +246,13 @@ class ConfInspector(object):
       xlim=(0, 10), ylim=(0, 10) )
     '''
     
-    # prettify(plot.gca() )
+    prettify(plot.gca() )
     # plot.title('n= {}, k= {}'.format(self.n, self.k) )
     plot.title('{}'.format(self.to_sysrepr() ) )
-    plot.xlabel(r'$\lambda_a$', fontsize=16)
-    plot.ylabel(r'$\lambda_b$', fontsize=16)
+    plot.xlabel(r'$\lambda_a$', fontsize=20)
+    plot.ylabel(r'$\lambda_b$', fontsize=20)
     fig = plot.gcf()
-    fig.set_size_inches(5, 5)
+    fig.set_size_inches(3, 3)
     plot.savefig('plot_servcap_2d_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
     fig.clear()
     log(INFO, "done.")
@@ -273,7 +274,7 @@ class ConfInspector(object):
       if cap_demand - i > 0.001:
         log(ERROR, "should have been supplied!", x=x)
         return
-      total_cost += cost
+      total_cost += cost - cap_demand
     return total_cost
   
   def moment_cost(self, pop_jointpdf, i):
@@ -281,7 +282,10 @@ class ConfInspector(object):
     return self.integrate_overcaphyperlane(func)
   
   def plot_cost_2d(self):
-    X, Y = np.mgrid[0:self.n:100j, 0:self.n:100j]
+    point_l = self.cap_boundary_point_l()
+    x_max = max([p[0] for p in point_l] )
+    y_max = max([p[1] for p in point_l] )
+    X, Y = np.mgrid[0:x_max:100j, 0:y_max:100j]
     # blog(X_shape=X.shape, Y_shape=Y.shape)
     
     x_l, y_l = X.ravel(), Y.ravel()
@@ -298,19 +302,20 @@ class ConfInspector(object):
     c = ax.pcolormesh(X, Y, cost_m, cmap='Reds')
     fig.colorbar(c, ax=ax)
     
-    ax.set_title('n= {}, k= {}'.format(self.n, self.k) )
-    ax.set_xlabel(r'$\lambda_a$', fontsize=14)
-    ax.set_ylabel(r'$\lambda_b$', fontsize=14)
+    prettify(plot.gca() )
+    ax.set_title('{}'.format(self.to_sysrepr() ) )
+    ax.set_xlabel(r'$\lambda_a$', fontsize=20)
+    ax.set_ylabel(r'$\lambda_b$', fontsize=20)
     
     fig = plot.gcf()
-    fig.set_size_inches(5, 5)
-    plot.savefig('plot_cost_2d_n{}_k{}.png'.format(self.n, self.k) ) # , bbox_extra_artists=[ax], bbox_inches='tight'
+    fig.set_size_inches(3, 3)
+    plot.savefig('plot_cost_2d_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight') # , bbox_extra_artists=[ax], 
     fig.clear()
     log(INFO, "done.")
   
   def plot_all_2d(self, popmodel):
     fig, axs = plot.subplots(1, 2, sharey=True)
-    fontsize = 18
+    fontsize = 20
     
     ### Service cap and Popularity heatmap
     ax = axs[0]
@@ -326,17 +331,18 @@ class ConfInspector(object):
     plot.fill(points_inrows[simplex, 0], points_inrows[simplex, 1], c=NICE_ORANGE, alpha=0.5)
     # Popularity heatmap
     [xmax, ymax] = popmodel.max_l
-    X, Y = np.mgrid[0:xmax:100j, 0:ymax:100j]
+    X, Y = np.mgrid[0:xmax:200j, 0:ymax:200j]
     positions = np.vstack([X.ravel(), Y.ravel() ] )
     Z = np.reshape(popmodel.kernel(positions).T, X.shape)
     # label='Popularity heatmap', 
     plot.imshow(np.rot90(Z), cmap=plot.cm.gist_earth_r, extent=[0, xmax, 0, ymax] )
     # plot.plot(values[0, :], values[1, :], 'k.', markersize=2)
     # plot.legend()
+    prettify(ax)
     plot.xlim([0, xmax] )
     plot.ylim([0, ymax] )
-    plot.xlabel('a', fontsize=fontsize)
-    plot.ylabel('b', fontsize=fontsize)
+    plot.xlabel(r'$\lambda_a$', fontsize=fontsize)
+    plot.ylabel(r'$\lambda_b$', fontsize=fontsize)
     
     covered_mass = self.integrate_overcaphyperlane(popmodel.joint_pdf)
     plot.text(0.7, 0.85, 'Covered mass= {}'.format(covered_mass),
@@ -353,30 +359,31 @@ class ConfInspector(object):
     cost_m = np.array(cost_l).reshape(X.shape)
     c = ax.pcolormesh(X, Y, cost_m, cmap='Reds')
     plot.gcf().colorbar(c, ax=ax)
+    prettify(ax)
     plot.xlim([0, xmax] )
     plot.ylim([0, ymax] )
-    plot.xlabel('a', fontsize=fontsize)
-    plot.ylabel('b', fontsize=fontsize)
+    plot.xlabel(r'$\lambda_a$', fontsize=fontsize)
+    plot.ylabel(r'$\lambda_b$', fontsize=fontsize)
     
     EC = self.moment_cost(popmodel.joint_pdf, i=1)
     plot.text(0.7, 0.85, 'E[Cost]= {}'.format(EC),
       horizontalalignment='center', verticalalignment='center', transform = ax.transAxes)
     
-    plot.suptitle('n= {}, k= {}'.format(self.n, self.k), fontsize=fontsize)
-    fig.set_size_inches(2*5, 5)
+    plot.suptitle('{}'.format(self.to_sysrepr() ) )
+    fig.set_size_inches(2*3.5, 3.5)
     plot.savefig('plot_all_2d_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
     fig.clear()
     log(INFO, "done;", n=self.n, k=self.k)
 
 if __name__ == "__main__":
-  # G = mds_conf_matrix(5, k=2)
-  G = custom_conf_matrix(4, k=2)
+  G = mds_conf_matrix(4, k=2)
+  # G = custom_conf_matrix(4, k=2)
   cf = ConfInspector(G)
   print("cf.to_sysrepr= {}".format(cf.to_sysrepr() ) )
   
   # r, M, C = cf.r_M_C()
   # cf.cap_boundary_point_l()
-  cf.plot_servcap_2d()
+  # cf.plot_servcap_2d()
   # cf.cap_hyperplane()
   # cf.integrate_overcaphyperlane(lambda x, y: 1)
   
