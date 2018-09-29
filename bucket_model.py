@@ -5,6 +5,9 @@ import numpy as np
 from mpl_toolkits import mplot3d
 import matplotlib.tri as mtri
 
+from functools import reduce
+from math import gcd
+
 from plot_utils import *
 from log_utils import *
 
@@ -20,6 +23,8 @@ Recurrence relation is found in (4) of M.V. Ramakrishna, Computing the probabili
 def Pr_no_overflow(n, m, b):
   map_ = {}
   def P(n, m, b):
+    if m <= 0:
+      log(ERROR, "m= {}!".format(m) )
     if n <= b:
       return 1
     n_ = n-1
@@ -38,8 +43,21 @@ def Pr_no_overflow(n, m, b):
       p2 = P(*t2)
       map_[t2] = p2
     
-    return p1 - binom(n_, b)*p2*(m-1)**(n_-b)/m**n_
-  return P(n, m, b)
+    # return p1 - binom(n_, b)*p2*(m-1)**(n_-b)/m**n_
+    ## To avoid numeric overflow while taking factorial of large integers
+    log_fact = lambda n: sum(math.log(i) for i in range(1, n+1) )
+    if p1 < 0:
+      p1 = 0.000000001
+    if p2 < 0:
+      p2 = 0.000000001
+    # print("p2= {}, m-1= {}".format(p2, m-1) )
+    r = log_fact(n_) - log_fact(n_-b) - log_fact(b) \
+        + math.log(p2) + (n_-b)*math.log(m-1) - n_*math.log(m)
+    return p1 - math.exp(r)
+  p = P(n, m, b)
+  if np.isnan(p):
+    p = 0
+  return p
 
 def plot_Pr_no_overflow():
   
@@ -82,7 +100,7 @@ def plot_Pr_no_overflow():
     plot.ylabel('Pr{no overflow}', fontsize=14)
     log(INFO, "done; m= {}, b= {}".format(m, b) )
   
-  '''
+  # '''
   fig, axs = plot.subplots(1, 2, sharey=True)
   plot.sca(axs[0] )
   plot_w_varying_b(n=100, m=10)
@@ -90,18 +108,26 @@ def plot_Pr_no_overflow():
   plot_w_varying_m(n=100, b=4)
   # plot.sca(axs[2] )
   # plot_w_varying_n(m=10, b=10)
+  
   fig.set_size_inches(2*3.5, 3.5)
-  '''
+  plot.savefig('plot_Pr_no_overflow.png', bbox_inches='tight')
+  fig.clear()
+  # '''
   
   def plot_w_varying_b_m(n):
     b_l, m_l, p_l = [], [], []
+    p_critical = 0.9
+    b_critical_l, m_critical_l = [], []
     for b in range(1, int(n/2) ):
       for m in range(1, int(n/2) ):
         b_l.append(b)
         m_l.append(m)
         p = Pr_no_overflow(n, m, b)
-        p = 0 if np.isnan(p) else p
         p_l.append(p)
+        
+        if p >= p_critical:
+          b_critical_l.append(b)
+          m_critical_l.append(m)
     
     fig = plot.figure()
     ax = plot.axes(projection='3d')
@@ -119,18 +145,78 @@ def plot_Pr_no_overflow():
     ax.set_zlabel('Pr{no overflow}')
     ax.set_zlim(zmin=0, zmax=1)
     plot.title('n= {}'.format(n) )
+    ax.view_init(30, -105)
+    plot.savefig('plot_w_varying_b_m.png', bbox_inches='tight')
+    fig.clear()
     
-    ax.view_init(30, -120)
+    plot.plot(b_critical_l, m_critical_l, label='Pr(no overflow) >= {}'.format(p_critical), c=NICE_BLUE, marker='.', ls='none')
+    x_l, y_l = [], []
+    constant = 150
+    for x in np.linspace(0, max(b_critical_l), 1000):
+      x_l.append(x)
+      y_l.append(constant/x)
+    plot.plot(x_l, y_l, label='x*y={}'.format(constant), c=NICE_RED, marker='.', ls='-')
     
+    plot.legend()
+    plot.xlabel('b')
+    plot.ylabel('m')
+    plot.ylim([0, max(m_critical_l) ] )
+    plot.title('n= {}'.format(n) )
+    plot.savefig('plot_critical_boundary.png', bbox_inches='tight')
+    fig.clear()
     # for angle in range(0, 360):
     #   ax.view_init(30, angle)
     #   plot.draw()
     #   plot.pause(.001)
-  plot_w_varying_b_m(n=100)
+  # plot_w_varying_b_m(n=100)
   
-  plot.savefig('plot_Pr_no_overflow.png', bbox_inches='tight')
-  # fig.clear()
   log(INFO, "done.")
+
+def compare_varying_groupsize(max_gs):
+  E = 100
+  k = reduce(lambda x,y: x*y//gcd(x, y), range(1, max_gs+1) ) # least common multiple
+  print("max_gs= {}, k= {}".format(max_gs, k) )
+  
+  g_l, p_l, nservers_l = [], [], []
+  for g in range(1, max_gs+1):
+    g_l.append(g)
+    m = int(k/g)
+    
+    # Encode with simplex
+    num_servers = m*(2**g - 1)
+    b = 2**(g-1)
+    
+    p = Pr_no_overflow(E, m, b)
+    print('g= {}, p= {}, num_servers= {}'.format(g, p, num_servers) )
+    p_l.append(p)
+    
+    nservers_l.append(num_servers)
+  
+  fig, axs = plot.subplots(1, 2)
+  fontsize = 14
+  ## Pr{robust}
+  ax = axs[0]
+  plot.sca(ax)
+  plot.plot(g_l, p_l, c=NICE_BLUE, marker='o', ls='-')
+  plot.xlabel('g', fontsize=fontsize)
+  plot.ylabel('Pr(robust)', fontsize=fontsize)
+  plot.ylim([0, 1.1] )
+  prettify(ax)
+  
+  ## Number of servers
+  ax = axs[1]
+  plot.sca(ax)
+  plot.plot(g_l, nservers_l, c=NICE_RED, marker='o', ls='-')
+  plot.xlabel('g', fontsize=fontsize)
+  plot.ylabel('Number of servers', fontsize=fontsize)
+  prettify(ax)
+  
+  st = plot.suptitle('k= {}, E= {}'.format(k, E), fontsize=fontsize)
+  plot.subplots_adjust(wspace=0.3)
+  fig.set_size_inches(2*4.5, 3.5)
+  plot.savefig('plot_Pr_robustness_w_varying_g.png', bbox_extra_artists=[st], bbox_inches='tight')
+  plot.gcf().clear()
+  log(INFO, "done; E= {}, max_gs= {}".format(E, max_gs) )
 
 if __name__ == "__main__":
   '''
@@ -143,5 +229,6 @@ if __name__ == "__main__":
     exp(n, m, b)
   '''
   
-  plot_Pr_no_overflow()
+  # plot_Pr_no_overflow()
+  compare_varying_groupsize(max_gs=7)
   
