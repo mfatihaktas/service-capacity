@@ -15,6 +15,16 @@ def binom(n, k):
   return scipy.special.binom(n, k)
 
 '''
+M: Maximal uniform spacing within the order statistics of m-1 iid Uniform[0, 1] samples.
+:= max{X(1), X(2)-X(1), ..., X(m-1)-X(m-2), 1-X(m-1) }
+
+Lemma 2.4: [https://projecteuclid.org/download/pdf_1/euclid.aop/1176994313]
+  Pr{M < y} --> exp(-exp(-(my - log(m) ) ) ) as m --> infty.
+'''
+def Pr_no_overflow_cont(E, m, C): # = Pr{M < C/E}
+  return math.exp(-math.exp(-(m*C/E - math.log(m) ) ) )
+
+'''
 n balls are thrown uniformly at random into m urns of capacity b.
 What is the probability that no urns overflow?
 
@@ -23,8 +33,9 @@ Recurrence relation is found in (4) of M.V. Ramakrishna, Computing the probabili
 def Pr_no_overflow(n, m, b):
   map_ = {}
   def P(n, m, b):
-    if m <= 0:
+    if m == 1:
       log(ERROR, "m= {}!".format(m) )
+      return int(n <= b)
     if n <= b:
       return 1
     n_ = n-1
@@ -46,9 +57,9 @@ def Pr_no_overflow(n, m, b):
     # return p1 - binom(n_, b)*p2*(m-1)**(n_-b)/m**n_
     ## To avoid numeric overflow while taking factorial of large integers
     log_fact = lambda n: sum(math.log(i) for i in range(1, n+1) )
-    if p1 < 0:
+    if p1 <= 0:
       p1 = 0.000000001
-    if p2 < 0:
+    if p2 <= 0:
       p2 = 0.000000001
     # print("p2= {}, m-1= {}".format(p2, m-1) )
     r = log_fact(n_) - log_fact(n_-b) - log_fact(b) \
@@ -173,7 +184,7 @@ def plot_Pr_no_overflow():
   log(INFO, "done.")
 
 def compare_varying_groupsize(max_gs):
-  E = 100
+  E = 419 # 200
   k = reduce(lambda x,y: x*y//gcd(x, y), range(1, max_gs+1) ) # least common multiple
   print("max_gs= {}, k= {}".format(max_gs, k) )
   
@@ -214,7 +225,7 @@ def compare_varying_groupsize(max_gs):
   st = plot.suptitle('k= {}, E= {}'.format(k, E), fontsize=fontsize)
   plot.subplots_adjust(wspace=0.3)
   fig.set_size_inches(2*4.5, 3.5)
-  plot.savefig('plot_Pr_robustness_w_varying_g.png', bbox_extra_artists=[st], bbox_inches='tight')
+  plot.savefig('plot_Pr_robustness_w_varying_g_E{}.png'.format(E), bbox_extra_artists=[st], bbox_inches='tight')
   plot.gcf().clear()
   log(INFO, "done; E= {}, max_gs= {}".format(E, max_gs) )
 
