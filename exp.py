@@ -1,4 +1,3 @@
-
 from log_utils import *
 from cap_finder import *
 from popularity import *

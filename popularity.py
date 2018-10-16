@@ -18,6 +18,11 @@ class PopModel_wZipf(object):
     self.zipf_tailindex_rv = zipf_tailindex_rv
     self.arrate_rv = arrate_rv
     
+    self.cap_l_ = self.cap_l(5000)
+    # self.values = np.array(self.cap_l_).reshape((self.k, len(self.cap_l_) )).T
+    self.values = np.column_stack(tuple(self.cap_l_) )
+    blog(values=self.values)
+    
     self.kernel, self.max_l = self.gaussian_kde()
   
   def __repr__(self):
@@ -35,32 +40,28 @@ class PopModel_wZipf(object):
       p_l = self.p_l(a)
       if random.uniform(0, 1) < 0.5: # each symbol is equally likely to be more popular
         p_l.reverse()
-      l.append(np.array(p_l)*self.arrate_rv.sample() )
+      ar = self.arrate_rv.sample()
+      # if ar > 2:
+      #   print("ar= {} > 2!".format(ar) )
+      l.append(np.array(p_l)*ar)
     return l
   
   def gaussian_kde(self, npoints=10000):
-    cap_l = self.cap_l(npoints)
-    values = np.array(cap_l).reshape((self.k, len(cap_l) ))
-    # blog(values=values)
-    
-    max_l = np.amax(values, axis=1).tolist()
-    kernel = scipy.stats.gaussian_kde(values) # bw_method='silverman'
+    max_l = np.amax(self.values, axis=1).tolist()
+    kernel = scipy.stats.gaussian_kde(self.values) # bw_method='silverman'
     return kernel, max_l
   
   def joint_pdf(self, *args):
     return self.kernel(np.array(args).reshape((self.k, 1)) )[0]
   
   def plot_heatmap_2d(self):
-    cap_l = self.cap_l(npoints=1000)
-    
-    values = np.array(cap_l).reshape((self.k, len(cap_l) ))
-    plot.plot(values[0, :], values[1, :], 'k.', markersize=2)
+    plot.plot(self.values[0, :], self.values[1, :], 'k.', markersize=2)
     fig = plot.gcf()
     fig.set_size_inches(5, 5)
     plot.savefig('plot_scatter_2d.png', bbox_inches='tight')
     fig.clear()
     
-    data = pd.DataFrame(cap_l, columns=['a', 'b'] )
+    data = pd.DataFrame(self.cap_l_, columns=['a', 'b'] )
     # print('data= {}'.format(data) )
     # seaborn.jointplot(x='a', y='b', data=data)
     seaborn.jointplot(x='a', y='b', data=data, kind='kde', space=0) # color='red'
@@ -75,11 +76,8 @@ class PopModel_wZipf(object):
     log(INFO, "done.")
   
   def plot_kde_2d(self):
-    cap_l = self.cap_l(npoints=10000)
-    
-    values = np.array(cap_l).reshape((self.k, len(cap_l) ))
-    xmin, xmax = min(values[0, :]), max(values[0, :])
-    ymin, ymax = min(values[1, :]), max(values[1, :])
+    xmin, xmax = min(self.values[0, :]), max(self.values[0, :])
+    ymin, ymax = min(self.values[1, :]), max(self.values[1, :])
     X, Y = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
     positions = np.vstack([X.ravel(), Y.ravel() ] )
     # blog(positions=positions)
@@ -87,7 +85,7 @@ class PopModel_wZipf(object):
     # blog(Z=Z)
     
     plot.imshow(np.rot90(Z), cmap=plot.cm.gist_earth_r, extent=[xmin, xmax, ymin, ymax] )
-    plot.plot(values[0, :], values[1, :], 'k.', markersize=2)
+    plot.plot(self.values[0, :], self.values[1, :], 'k.', markersize=2)
     plot.xlim([xmin, xmax] )
     plot.ylim([ymin, ymax] )
     plot.xlabel('a', fontsize=14)
@@ -101,6 +99,10 @@ class PopModel_wZipf(object):
     log(INFO, "done.")
   
 if __name__ == "__main__":
-  pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1.2, 1), arrate_rv=TNormal(3, 1) )
-  # pm.plot_heatmap_2d()
+  # pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1, 0.1), arrate_rv=TNormal(1.5, 0.4) )
+  pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(2, 0.01), arrate_rv=TNormal(2, 0.01) )
+  # # pm.plot_heatmap_2d()
   pm.plot_kde_2d()
+  
+  # rv = TNormal(2, 0.01)
+  # print("samples= \n{}".format([rv.sample() for _ in range(1000) ] ) )

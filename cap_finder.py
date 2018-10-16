@@ -1,13 +1,14 @@
 import math, scipy, cvxpy, pprint, itertools, string
 import numpy as np
 from scipy import spatial
-from fillplots import plot_regions
+# from fillplots import plot_regions
 
 from mpl_toolkits import mplot3d
 
 from plot_utils import *
 from conf_gen import *
 from log_utils import *
+from popularity import *
 
 # ########################################  ConfInspector  ########################################### #
 '''
@@ -132,6 +133,7 @@ class ConfInspector(object):
       # p_l.append(tuple(map(tuple, y) ) )
       # y = (e[0] for e in y)
       p = [e[0] for e in tuple(y) ]
+      # print("w= {}, p= {}".format(w, p) )
       p_l.append(p)
       ## Add projections on the axes as well to make sure point_l form a convex hull
       for i in range(self.k):
@@ -144,7 +146,7 @@ class ConfInspector(object):
   
   def cap_hyperplane(self):
     point_l = self.cap_boundary_point_l()
-    point_l.append((0, 0))
+    point_l.append((0,)*self.k)
     # log(INFO, "", point_l=point_l)
     # plot_points(point_l, fname='points')
     points_inrows = np.array(point_l).reshape((len(point_l), self.k))
@@ -209,7 +211,32 @@ class ConfInspector(object):
     # blog(result=result, abserr=abserr)
     return round(result, 2)
   
-  def plot_servcap_2d(self):
+  def plot_servcap_3d(self):
+    fig = plot.figure()
+    ax = plot.axes(projection='3d')
+    
+    point_l = self.cap_boundary_point_l()
+    point_l.append((0, 0, 0))
+    # blog(point_l=point_l)
+    
+    points_inrows = np.array(point_l).reshape((len(point_l), self.k))
+    hull = scipy.spatial.ConvexHull(points_inrows)
+    for simplex in hull.simplices:
+      ax.scatter3D(points_inrows[simplex, 0], points_inrows[simplex, 1], points_inrows[simplex, 2], c=NICE_ORANGE, marker='o')
+      
+      # print("extreme vertices=\n{}".format(points_inrows[simplex, :] ) )
+    # ax.fill_between(points_inrows[hull.vertices, 0], points_inrows[hull.vertices, 1], points_inrows[hull.vertices, 2], c=NICE_ORANGE, alpha=0.3)
+    
+    ax.set_xlabel(r'$\lambda_a$', fontsize=20)
+    ax.set_ylabel(r'$\lambda_b$', fontsize=20)
+    ax.set_zlabel(r'$\lambda_c$', fontsize=20)
+    plot.title('{}'.format(self.to_sysrepr() ) )
+    ax.view_init(30, -105)
+    plot.savefig('plot_servcap_3d_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
+    fig.clear()
+  
+  def plot_servcap_2d(self, popmodel=None):
+    ## Service cap
     # '''
     point_l = self.cap_boundary_point_l()
     point_l.append((0, 0))
@@ -245,12 +272,24 @@ class ConfInspector(object):
       [[(eq, True) for eq in eq_l] ],
       xlim=(0, 10), ylim=(0, 10) )
     '''
+    ## Popularity heatmap
+    if popmodel is not None:
+      [xmax, ymax] = popmodel.max_l
+      X, Y = np.mgrid[0:xmax:200j, 0:ymax:200j]
+      positions = np.vstack([X.ravel(), Y.ravel() ] )
+      Z = np.reshape(popmodel.kernel(positions).T, X.shape)
+      plot.imshow(np.rot90(Z), cmap=plot.cm.gist_earth_r, extent=[0, xmax, 0, ymax] )
+      covered_mass = self.integrate_overcaphyperlane(popmodel.joint_pdf)
+      plot.text(0.45, 0.85, 'Covered mass= {}'.format(covered_mass),
+        horizontalalignment='center', verticalalignment='center', transform = plot.gca().transAxes)
     
+    # plot.xlim((0, 2.1))
+    # plot.ylim((0, 2.1))
     prettify(plot.gca() )
     # plot.title('n= {}, k= {}'.format(self.n, self.k) )
     plot.title('{}'.format(self.to_sysrepr() ) )
-    plot.xlabel(r'$\lambda_a$', fontsize=20)
-    plot.ylabel(r'$\lambda_b$', fontsize=20)
+    plot.xlabel(r'$\lambda_a \hspace{0.5} (\mu)$', fontsize=20)
+    plot.ylabel(r'$\lambda_b \hspace{0.5} (\mu)$', fontsize=20)
     fig = plot.gcf()
     fig.set_size_inches(3, 3)
     plot.savefig('plot_servcap_2d_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
@@ -376,15 +415,24 @@ class ConfInspector(object):
     log(INFO, "done;", n=self.n, k=self.k)
 
 if __name__ == "__main__":
-  G = mds_conf_matrix(4, k=2)
-  # G = custom_conf_matrix(4, k=2)
+  # G = mds_conf_matrix(4, k=2)
+  G = custom_conf_matrix(3, k=2)
+  # G = mds_conf_matrix(4, k=3)
   cf = ConfInspector(G)
   print("cf.to_sysrepr= {}".format(cf.to_sysrepr() ) )
   
   # r, M, C = cf.r_M_C()
   # cf.cap_boundary_point_l()
+  
   # cf.plot_servcap_2d()
+  # pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(0.8, 0.5), arrate_rv=TNormal(1.5, 0.4) )
+  pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(2, 0.01), arrate_rv=TNormal(1.75, 0.4) )
+  cf.plot_servcap_2d(pm)
+  
   # cf.cap_hyperplane()
   # cf.integrate_overcaphyperlane(lambda x, y: 1)
   
   # cf.plot_cost_2d()
+  
+  # cf.plot_servcap_3d()
+  
