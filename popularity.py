@@ -99,8 +99,7 @@ class PopModel_wZipf(object):
     log(INFO, "done.")
   
 if __name__ == "__main__":
-  # pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1, 0.1), arrate_rv=TNormal(1.5, 0.4) )
-  pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(2, 0.01), arrate_rv=TNormal(2, 0.01) )
+  pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1, 2), arrate_rv=TNormal(1.5, 0.4) )
   # # pm.plot_heatmap_2d()
   pm.plot_kde_2d()
   
