@@ -46,6 +46,14 @@ class PopModel_wZipf(object):
       l.append(np.array(p_l)*ar)
     return l
   
+  def integrate_overpopmodel(self, func):
+    ranges = []
+    for m in self.max_l:
+      ranges.append((0, m) )
+    log(INFO, "", ranges=ranges)
+    result, abserr = scipy.integrate.nquad(func, ranges, opts={'limit': 200, 'epsabs': 1.49e-04})
+    return round(result, 2)
+  
   def gaussian_kde(self, npoints=10000):
     max_l = np.amax(self.values, axis=1).tolist()
     kernel = scipy.stats.gaussian_kde(self.values) # bw_method='silverman'

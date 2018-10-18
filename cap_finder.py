@@ -28,7 +28,7 @@ Naturally, Mx <= 1 where the capacity of each node is 1.
 class ConfInspector(object):
   def __init__(self, G):
     self.G = G
-    self.cost_ofgoingtocloud = 2
+    self.cost_ofgoingtocloud = 5
     
     self.k = G.shape[0]
     self.n = G.shape[1]
@@ -287,6 +287,13 @@ class ConfInspector(object):
     fig.clear()
     log(INFO, "done.")
   
+  def util(self, *args):
+    x = np.array(args).reshape((self.k, 1))
+    if np.any(np.greater(np.dot(self.A, x), self.b) ):
+      return 1
+    else:
+      return np.sum(x)/self.n
+    
   def cost(self, *args):
     def cost_insidecapregion(x):
       total_cost = 0
@@ -331,9 +338,9 @@ class ConfInspector(object):
     else:
       return cost_insidecapregion(x.T[0] )
   
-  def moment_cost(self, pop_jointpdf, i):
-    func = lambda *args: self.cost(*args)**i * pop_jointpdf(*args)
-    return self.integrate_overcaphyperlane(func)
+  def moment_cost(self, i, popmodel):
+    func = lambda *args: self.cost(*args)**i * popmodel.joint_pdf(*args)
+    return popmodel.integrate_overpopmodel(func)
   
   def plot_cost_2d(self, popmodel=None):
     # point_l = self.cap_boundary_point_l()
@@ -369,11 +376,13 @@ class ConfInspector(object):
       for simplex in self.hull.simplices:
         plot.plot(self.points_inrows[simplex, 0], self.points_inrows[simplex, 1], c=NICE_BLUE, marker='o', ls='-', lw=3)
       
-      EC = self.moment_cost(popmodel.joint_pdf, i=1)
+      EC = self.moment_cost(1, popmodel)
+      blog(EC=EC)
       plot.text(0.7, 0.8, 'E[Cost]= {}'.format(EC),
         horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
       
-      Eutil = self.integrate_overcaphyperlane(lambda x, y: (x + y)/self.n * popmodel.joint_pdf(x, y) )
+      Eutil = popmodel.integrate_overpopmodel(lambda x, y: self.util(x, y) * popmodel.joint_pdf(x, y) )
+      blog(Eutil=Eutil)
       plot.text(0.7, 0.7, 'E[Utilization]= {}'.format(round(Eutil, 2) ),
         horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
     
@@ -436,7 +445,7 @@ class ConfInspector(object):
     plot.xlabel(r'$\lambda_a$', fontsize=fontsize)
     plot.ylabel(r'$\lambda_b$', fontsize=fontsize)
     
-    EC = self.moment_cost(popmodel.joint_pdf, i=1)
+    EC = self.moment_cost(1, popmodel)
     plot.text(0.7, 0.85, 'E[Cost]= {}'.format(EC),
       horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
     
@@ -447,8 +456,8 @@ class ConfInspector(object):
     log(INFO, "done;", n=self.n, k=self.k)
 
 if __name__ == "__main__":
-  G = mds_conf_matrix(4, k=2)
-  # G = custom_conf_matrix(4, k=2)
+  # G = mds_conf_matrix(4, k=2)
+  G = custom_conf_matrix(3, k=2)
   # G = mds_conf_matrix(4, k=3)
   cf = ConfInspector(G)
   print("cf.to_sysrepr= {}".format(cf.to_sysrepr() ) )
