@@ -28,7 +28,7 @@ class BucketConfInspector(object):
         self.M[bucket, obj] = 1
   
   def __repr__(self):
-    return 'BucketConfInspector[m= {}, C= {}, \n\tobj__bucket_l_m= {}, \n\tM= {}, \n\tT= {}]'.format(self.m, self.C, self.obj__bucket_l_m, self.M, self.T)
+    return 'BucketConfInspector[m= {}, C= {}, \nobj__bucket_l_m= {}, \nM=\n{}, \nT=\n{}]'.format(self.m, self.C, self.obj__bucket_l_m, self.M, self.T)
   
   def is_stable(self, d_l):
     x = cvxpy.Variable(shape=(self.l, 1), name='x')
@@ -44,7 +44,7 @@ class BucketConfInspector(object):
   def sim_frac_stable(self, cum_demand, nsamples=400):
     nstable = 0
     for i in range(nsamples):
-      rand_l = np.random.uniform(size=(self.k-1, 1) )
+      rand_l = sorted(np.random.uniform(size=(self.k-1, 1) ) )
       d_l = np.array([rand_l[0]] + \
         [rand_l[i+1] - rand_l[i] for i in range(len(rand_l)-1) ] + \
         [1 - rand_l[-1]] ) * cum_demand
@@ -85,6 +85,37 @@ def plot_Pr_robust_sim_vs_model():
   plot.savefig('plot_Pr_robust_sim_vs_model.png', bbox_inches='tight')
   log(INFO, "done; m= {}, C= {}".format(m, C) )
 
+def plot_Pr_robust_wchoice():
+  m, C = 4, 5
+  obj__bucket_l_m = {0: [0], 1: [1], 2: [2], 3: [3] }
+  bci_w1choice = BucketConfInspector(m, C, obj__bucket_l_m)
+  print("bci_w1choice= {}".format(bci_w1choice) )
+  
+  obj__bucket_l_m = {0: [0, 1], 1: [1, 2], 2: [2, 3], 3: [3, 0] }
+  bci_w2choice = BucketConfInspector(m, C, obj__bucket_l_m)
+  print("bci_w2choice= {}".format(bci_w2choice) )
+  
+  E_l = []
+  Pr_robust_w1choice_l, Pr_robust_w2choice_l = [], []
+  for E in np.linspace(C, 2*C, 10):
+    E_l.append(E)
+    Pr_robust_w1choice = bci_w1choice.sim_frac_stable(cum_demand=E)
+    Pr_robust_w2choice = bci_w2choice.sim_frac_stable(cum_demand=E)
+    print("E= {}, Pr_robust_w1choice= {}, Pr_robust_w2choice= {}".format(E, Pr_robust_w1choice, Pr_robust_w2choice) )
+    
+    Pr_robust_w1choice_l.append(Pr_robust_w1choice)
+    Pr_robust_w2choice_l.append(Pr_robust_w2choice)
+    
+  plot.plot(E_l, Pr_robust_w1choice_l, label='w/ 1-choice', c=NICE_BLUE, marker='o', ls=':', lw=2)
+  plot.plot(E_l, Pr_robust_w2choice_l, label='w/ 2-choice', c=NICE_ORANGE, marker='o', ls=':', lw=2)
+  plot.legend()
+  plot.ylim([0, 1] )
+  plot.title('m= {}, C= {}'.format(m, C) )
+  plot.xlabel('E', fontsize=14)
+  plot.ylabel('Pr{robust}', fontsize=14)
+  plot.savefig('plot_Pr_robust_sim_vs_model.png', bbox_inches='tight')
+  log(INFO, "done; m= {}, C= {}".format(m, C) )
+
 if __name__ == "__main__":
   # m, C = 2, 10
   # obj__bucket_l_m = {0: [0], 1: [0], 2: [1], 3: [1] }
@@ -92,4 +123,5 @@ if __name__ == "__main__":
   # bci.sim_frac_stable(cum_demand=15)
   # print("bci= {}".format(bci) )
   
-  plot_Pr_robust_sim_vs_model()
+  # plot_Pr_robust_sim_vs_model()
+  plot_Pr_robust_wchoice()
