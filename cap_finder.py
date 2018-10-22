@@ -92,19 +92,19 @@ class ConfInspector(object):
     return sys__repgroup_l_l
   
   def r_M_C(self):
-    # C
+    ## C
     x = []
     for rg_l in self.sys__repgroup_l_l:
       x.extend(rg_l)
     
     r = len(x)
     C = np.zeros((self.k, r))
-    c = 0
+    i = 0
     for s, rg_l in enumerate(self.sys__repgroup_l_l):
-      c_ = c + len(rg_l)
-      C[s, c:c_] = 1
-      c = c_
-    # M
+      j = i + len(rg_l)
+      C[s, i:j] = 1
+      i = j
+    ## M
     M = np.zeros((self.n, r))
     for i in range(self.n):
       for j in range(r):
@@ -457,7 +457,7 @@ class ConfInspector(object):
 
 if __name__ == "__main__":
   # G = mds_conf_matrix(4, k=2)
-  G = custom_conf_matrix(3, k=2)
+  G = custom_conf_matrix(4, k=2)
   # G = mds_conf_matrix(4, k=3)
   cf = ConfInspector(G)
   print("cf.to_sysrepr= {}".format(cf.to_sysrepr() ) )
