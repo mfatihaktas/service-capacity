@@ -25,7 +25,12 @@ def Pr_no_overflow_cont_approx(E, m, C): # = Pr{M < C/E}
   return math.exp(-math.exp(-(m*C/E - math.log(m) ) ) )
 
 def Pr_no_overflow_cont(E, m, C): # = Pr{M < C/E}
-  if C == 0:
+  # log(INFO, "starting;", E=E, m=m, C=C)
+  if E <= 0:
+    return 1
+  elif C < 0:
+    return 0
+  elif C == 0:
     return E == 0
   s = 0
   x = C/E
@@ -41,11 +46,39 @@ def Pr_no_overflow_cont(E, m, C): # = Pr{M < C/E}
     p = 0
   return p
 
+def Pr_no_overflow_wchoice_cont(choice, E, m, C):
+  # log(INFO, "starting;", choice=choice, E=E, m=m, C=C)
+  if E <= 0:
+    return 0
+  
+  if choice == 1:
+    return Pr_no_overflow_cont(E, m, C)
+  
+  def Pr_overflow_eq_x(x):
+    d = 0.1
+    return (Pr_no_overflow_cont(E, m, x+d) - Pr_no_overflow_cont(E, m, x-d) )/d/2
+  # def func(x):
+  #   p = Pr_overflow_eq_x(x)
+  #   # print("Pr_overflow_eq_x(x={})= {}".format(x, p) )
+  #   return p*Pr_no_overflow_cont(x-C, m-1, C_)
+  # C_ = lambda x: C - (E-x)*(2*math.log(math.log(m-1)) + math.log(m-1) )/(m-1) # C - (E-x)/(m-1)
+  C_ = lambda x: C - E*(math.log(math.log(m)) + math.log(m) )/m
+  func = lambda x: Pr_overflow_eq_x(x)*Pr_no_overflow_wchoice_cont(choice-1, x-C, m-1, C_(x) )
+  
+  # C_ = C - E*(math.log(math.log(m)) + math.log(m) )/m
+  # func = lambda x: Pr_overflow_eq_x(x)*Pr_no_overflow_wchoice_cont(choice-1, x-C, choice, C_)
+  
+  result, abserr = scipy.integrate.quad(func, C, E)
+  # blog(result=result, abserr=abserr)
+  p = Pr_no_overflow_cont(E, m, C) + round(result, 2)
+  # log(INFO, "returning;", choice=choice, E=E, m=m, C=C)
+  return p
+
 def min_max_required_C(E, m):
   def maximal_uniform_spacing_ub(m):
-    return (2*math.log2(m) + math.log(m) )/m
+    return (2*math.log(math.log(m) ) + math.log(m) )/m
   def maximal_uniform_spacing_lb(m):
-    return (math.log(m) - math.log(m, 3) - math.log(2) )/m
+    return (math.log(m) - math.log(math.log(math.log(m))) - math.log(2) )/m
   return E*maximal_uniform_spacing_lb(m), E*maximal_uniform_spacing_ub(m)
 
 def min_required_g(k, E):
@@ -239,10 +272,13 @@ def plot_Pr_no_overflow():
   plot_w_varying_C_m(E=100)
   log(INFO, "done.")
 
+def k_from_max_group_size(max_gs):
+  return reduce(lambda x,y: x*y//gcd(x, y), range(1, max_gs+1) ) # least common multiple
+
 def compare_varying_groupsize(max_gs):
-  E = 420 # 200 # 100
-  k = reduce(lambda x,y: x*y//gcd(x, y), range(1, max_gs+1) ) # least common multiple
-  print("max_gs= {}, k= {}".format(max_gs, k) )
+  E = 100 # 420 # 200 # 100
+  k = k_from_max_group_size(max_gs)
+  log(INFO, "max_gs= {}, k= {}".format(max_gs, k) )
   
   min_g = min_required_g(k, E)
   print("min_g= {}".format(min_g) )
@@ -270,7 +306,7 @@ def compare_varying_groupsize(max_gs):
   plot.sca(ax)
   plot.plot(g_l, p_l, c=NICE_BLUE, marker='o', ls='-')
   plot.xlabel('g', fontsize=fontsize)
-  plot.ylabel('Pr{E-robust}', fontsize=fontsize)
+  plot.ylabel(r'Pr{$\Sigma$-robust}', fontsize=fontsize)
   plot.ylim([0, 1.1] )
   prettify(ax)
   
@@ -282,13 +318,71 @@ def compare_varying_groupsize(max_gs):
   plot.ylabel('Total number of servers', fontsize=fontsize)
   prettify(ax)
   
-  st = plot.suptitle('k= {}, E= {}, asymptotic min g= {}'.format(k, E, min_g), fontsize=fontsize)
+  st = plot.suptitle(r'k= {}, $\Sigma$= {}, asymptotic min g= {}'.format(k, E, min_g), fontsize=fontsize)
   plot.subplots_adjust(wspace=0.3)
   fig.set_size_inches(2*4.5, 3.5)
   plot.savefig('plot_Pr_robustness_w_varying_g_E{}.png'.format(E), bbox_extra_artists=[st], bbox_inches='tight')
   plot.gcf().clear()
   log(INFO, "done; E= {}, max_gs= {}".format(E, max_gs) )
 
+def plot_Pr_no_overflow_wchoice():
+  m, C = 10, 5
+  
+  def plot_(choice):
+    print("choice= {}".format(choice) )
+    E_l, Pr_no_overflow_l = [], []
+    for E in np.linspace(C, m*C, 20):
+      E_l.append(E)
+      p = Pr_no_overflow_wchoice_cont(choice, E, m, C)
+      print("E= {}, Pr_no_overflow= {}".format(E, p) )
+      Pr_no_overflow_l.append(p)
+      if p < 0.01:
+        break
+    plot.plot(E_l, Pr_no_overflow_l, label='{}-choice'.format(choice), c=next(dark_color), marker='o', ls=':', lw=2)
+  
+  for c in range(1, 5):
+    plot_(choice=c)
+  
+  plot.legend(loc='lower left')
+  plot.ylim([0, 1] )
+  plot.title('m= {}, C= {}'.format(m, C) )
+  plot.xlabel('E', fontsize=14)
+  plot.ylabel('Pr{no overflow}', fontsize=14)
+  plot.savefig('plot_Pr_no_overflow_wchoice_m{}_C{}.png'.format(m, C), bbox_inches='tight')
+  log(INFO, "done; m= {}, C= {}".format(m, C) )
+
+def if_resource_reduction_possible_wchoice(max_gs):
+  k = k_from_max_group_size(max_gs)
+  log(INFO, "max_gs= {}, k= {}".format(max_gs, k) )
+  
+  g_wchoice = lambda m: k*math.ceil(math.log2(m))/m
+  cap_wchoice = lambda m: 2**(g_wchoice(m) - 1)
+  # Suppose when each object has >log(m) choice, maximum load will be E/m + 1.
+  def max_m_wchoice(E):
+    m = 2
+    while True:
+      if cap_wchoice(m) < 2*math.ceil(E/m): # E/m + 2:
+        break
+      m += 1
+    return m - 1
+  
+  def nservers_wchoice(E):
+    m = max_m_wchoice(E)
+    log(INFO, "m= {}".format(m) )
+    return m*(2**g_wchoice(m) - 1)
+  
+  def nservers_wochoice(E):
+    g = min_required_g(k, E)
+    m = k/g
+    log(INFO, "m= {}".format(m) )
+    return m*(2**g - 1)
+  
+  for E in np.linspace(100, 3*k, 20):
+    blog(E=E,
+      nservers_wochoice=nservers_wochoice(E),
+      nservers_wchoice=nservers_wchoice(E) )
+    print("---")
+  
 if __name__ == "__main__":
   '''
   def exp(n, m, b):
@@ -301,5 +395,6 @@ if __name__ == "__main__":
   '''
   
   # plot_Pr_no_overflow()
-  compare_varying_groupsize(max_gs=7)
-  
+  # compare_varying_groupsize(max_gs=7)
+  # plot_Pr_no_overflow_wchoice()
+  if_resource_reduction_possible_wchoice(max_gs=7)

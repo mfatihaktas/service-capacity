@@ -66,7 +66,8 @@ class ConfInspector(object):
     
     sys__repgroup_l_l = [[] for s in range(self.k) ]
     for s in range(self.k):
-      y = self.G[:, s].reshape((self.k, 1))
+      # y = self.G[:, s].reshape((self.k, 1))
+      y = np.array([0]*s + [1] + [0]*(self.k-s-1) ).reshape((self.k, 1))
       repgroup_l = []
       for repair_size in range(1, self.k+1):
         for subset in itertools.combinations(range(self.n), repair_size):
@@ -239,7 +240,7 @@ class ConfInspector(object):
     # plot.plot(self.points_inrows[self.hull.vertices, 0], self.points_inrows[self.hull.vertices, 1], 'r--', lw=2)
     # plot.plot(self.points_inrows[self.hull.vertices[0], 0], self.points_inrows[self.hull.vertices[0], 1], 'ro')
     # plot.fill(self.points_inrows[simplex, 0], self.points_inrows[simplex, 1], c=NICE_BLUE, alpha=0.5)
-    plot.fill(self.points_inrows[self.hull.vertices, 0], self.points_inrows[self.hull.vertices, 1], c=NICE_BLUE, alpha=0.3)
+    # plot.fill(self.points_inrows[self.hull.vertices, 0], self.points_inrows[self.hull.vertices, 1], c=NICE_BLUE, alpha=0.3)
     # '''
     
     '''
@@ -318,23 +319,29 @@ class ConfInspector(object):
       def proj_mindistance(pt1, pt2, p):
         # blog(x=x, pt1=pt1, pt2=pt2)
         """ returns the projection of point p (and the distance) on the closest edge formed by the two points pt1 and pt2"""
-        l = np.sum((pt2-pt1)**2) # compute the squared distance between the 2 vertices
+        v2 = pt2-pt1
+        l = np.sum(v2**2) # compute the squared distance between the 2 vertices
         # blog(l=l, dot=np.dot(p-pt1, pt2-pt1)[0] )
-        t = np.max([0., np.min([1., np.dot(p-pt1, pt2-pt1)[0]/l] ) ] )
+        t = np.max([0., np.min([1., np.dot(p-pt1, pt2-pt1)[0]/l] ) ] ) # np.min([1., np.dot(p-pt1, pt2-pt1)[0]/l] )
+        # blog(dot=np.dot(p-pt1, pt2-pt1), t=t)
         proj = pt1 + t*(pt2-pt1)
         return proj, np.sum((proj-p)**2) # project the point
       
       proj, mindistance = None, float('Inf')
       for i in range(len(self.hull.vertices)):
-        p, m = proj_mindistance(self.points_inrows[self.hull.vertices[i] ], self.points_inrows[self.hull.vertices[(i+1) % len(self.hull.vertices) ] ], x)
+        p, m = proj_mindistance(self.points_inrows[self.hull.vertices[i] ], self.points_inrows[self.hull.vertices[(i+1) % len(self.hull.vertices) ] ], x.T)
         if m < mindistance:
           mindistance = m
           proj = p
       if proj is None:
         log(ERROR, "proj= {}".format(proj) )
         return 0
-      # blog(proj=proj)
-      return cost_insidecapregion(proj) + self.cost_ofgoingtocloud*np.sum(x.T[0] - proj)
+      # blog(x=x.T[0], proj=proj)
+      dist_x_proj = abs(np.sum(x.T[0] - proj) )
+      # if dist_x_proj > 0.2:
+      #   print("---")
+      #   blog(x=x.T[0], proj=proj, x_proj=(x.T[0] - proj) )
+      return cost_insidecapregion(proj) + self.cost_ofgoingtocloud*dist_x_proj
     else:
       return cost_insidecapregion(x.T[0] )
   
@@ -343,8 +350,10 @@ class ConfInspector(object):
     return popmodel.integrate_overpopmodel(func)
   
   def plot_cost_2d(self, popmodel=None):
-    # point_l = self.cap_boundary_point_l()
-    point_l = popmodel.cap_l_
+    if popmodel is None:
+      point_l = self.cap_boundary_point_l()
+    else:
+      point_l = popmodel.cap_l_
     x_max = max([p[0] for p in point_l] )
     y_max = max([p[1] for p in point_l] )
     X, Y = np.mgrid[0:x_max:100j, 0:y_max:100j]
@@ -455,9 +464,37 @@ class ConfInspector(object):
     fig.clear()
     log(INFO, "done;", n=self.n, k=self.k)
 
+def plot_capregion_blending_rep_coding():
+  def plot_capregion(G, c, ls):
+    cf = ConfInspector(G)
+    for simplex in cf.hull.simplices:
+      plot.plot(cf.points_inrows[simplex, 0], cf.points_inrows[simplex, 1], c=c, marker='.', ls=ls, lw=4)
+  
+  # a, a, a, a, b, b, b, b
+  G = np.array([[1, 0], [0, 1], [1, 0], [1, 0], [1, 0], [0, 1], [0, 1], [0, 1] ] ).T
+  plot_capregion(G, NICE_BLUE, '-')
+  # a, a, a, b, b, b, a+b, a+2b
+  G = np.array([[1, 0], [0, 1], [1, 0], [1, 0], [0, 1], [0, 1], [1, 1], [1, 2] ] ).T
+  plot_capregion(G, NICE_RED, '--')
+  # a, b, a+b, a+2b, a+3b, a+4b, a+5b, a+6b
+  G = np.array([[1, 0], [0, 1], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6] ] ).T
+  plot_capregion(G, NICE_ORANGE, ':')
+  # a+b, a+2b, a+3b, a+4b, a+5b, a+6b, a+7b, a+8b
+  G = np.array([[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8] ] ).T
+  plot_capregion(G, 'purple', '-.')
+  
+  prettify(plot.gca() )
+  plot.xlabel(r'$\lambda_a$', fontsize=20)
+  plot.ylabel(r'$\lambda_b$', fontsize=20)
+  fig = plot.gcf()
+  fig.set_size_inches(3, 3)
+  plot.savefig('plot_capregion_blending_rep_coding.png', bbox_inches='tight')
+  fig.clear()
+  log(INFO, "done.")
+
 if __name__ == "__main__":
   # G = mds_conf_matrix(4, k=2)
-  G = custom_conf_matrix(4, k=2)
+  G = custom_conf_matrix(3, k=2)
   # G = mds_conf_matrix(4, k=3)
   cf = ConfInspector(G)
   print("cf.to_sysrepr= {}".format(cf.to_sysrepr() ) )
@@ -466,12 +503,14 @@ if __name__ == "__main__":
   # cf.cap_boundary_point_l()
   
   # cf.plot_servcap_2d()
-  pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1, 2), arrate_rv=TNormal(1.5, 0.4) )
+  # pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1, 2), arrate_rv=TNormal(1.5, 0.4) )
   # cf.plot_servcap_2d(pm)
-  cf.plot_cost_2d(pm)
+  # cf.plot_cost_2d(pm)
   
   # cf.cap_hyperplane()
   # cf.integrate_overcaphyperlane(lambda x, y: 1)
   
   # cf.plot_servcap_3d()
+  
+  plot_capregion_blending_rep_coding()
   

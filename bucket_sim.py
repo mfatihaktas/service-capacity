@@ -23,9 +23,13 @@ class BucketConfInspector(object):
     
     ## M
     self.M = np.zeros((m, self.l))
-    for obj in range(self.k):
+    obj = 0
+    i = 0
+    while obj < self.k:
       for bucket in obj__bucket_l_m[obj]:
-        self.M[bucket, obj] = 1
+        self.M[bucket, i] = 1
+        i += 1
+      obj += 1
   
   def __repr__(self):
     return 'BucketConfInspector[m= {}, C= {}, \nobj__bucket_l_m= {}, \nM=\n{}, \nT=\n{}]'.format(self.m, self.C, self.obj__bucket_l_m, self.M, self.T)
@@ -37,7 +41,11 @@ class BucketConfInspector(object):
     obj = cvxpy.Maximize(0)
     constraints = [self.M*x <= self.C, x >= 0, self.T*x == np.array(d_l).reshape((self.k, 1)) ]
     prob = cvxpy.Problem(obj, constraints)
-    prob.solve()
+    try:
+      prob.solve()
+    except cvxpy.SolverError:
+      prob.solve(solver='SCS')
+    
     # blog(x_val=x.value)
     return prob.status == 'optimal'
   
@@ -85,36 +93,77 @@ def plot_Pr_robust_sim_vs_model():
   plot.savefig('plot_Pr_robust_sim_vs_model.png', bbox_inches='tight')
   log(INFO, "done; m= {}, C= {}".format(m, C) )
 
+def BucketConfInspector_regularbalanced(choice, k, m, C):
+  obj__bucket_l_m = {obj: [] for obj in range(k) }
+  for obj, bucket_l in obj__bucket_l_m.items():
+    bucket = obj % m
+    bucket_l.extend([(bucket+i) % m for i in range(choice) ] )
+  return BucketConfInspector(m, C, obj__bucket_l_m)
+
 def plot_Pr_robust_wchoice():
-  m, C = 4, 5
-  obj__bucket_l_m = {0: [0], 1: [1], 2: [2], 3: [3] }
-  bci_w1choice = BucketConfInspector(m, C, obj__bucket_l_m)
-  print("bci_w1choice= {}".format(bci_w1choice) )
+  # k, m, C = 4, 4, 5
+  # k, m, C = 10, 10, 5
+  k, m, C = 100, 100, 5
   
-  obj__bucket_l_m = {0: [0, 1], 1: [1, 2], 2: [2, 3], 3: [3, 0] }
-  bci_w2choice = BucketConfInspector(m, C, obj__bucket_l_m)
-  print("bci_w2choice= {}".format(bci_w2choice) )
+  def plot_(choice):
+    print("choice= {}".format(choice) )
+    bci = BucketConfInspector_regularbalanced(choice, k, m, C)
+    E_l, Pr_robust_l = [], []
+    for E in np.linspace(C, (m+1)*C, 20):
+      E_l.append(E)
+      Pr_robust = bci.sim_frac_stable(cum_demand=E)
+      print("E= {}, Pr_robust= {}".format(E, Pr_robust) )
+      Pr_robust_l.append(Pr_robust)
+      if Pr_robust < 0.01:
+        break
+    plot.plot(E_l, Pr_robust_l, label='{}-choice'.format(choice), c=next(dark_color), marker='o', ls=':', lw=2)
   
-  E_l = []
-  Pr_robust_w1choice_l, Pr_robust_w2choice_l = [], []
-  for E in np.linspace(C, 2*C, 10):
-    E_l.append(E)
-    Pr_robust_w1choice = bci_w1choice.sim_frac_stable(cum_demand=E)
-    Pr_robust_w2choice = bci_w2choice.sim_frac_stable(cum_demand=E)
-    print("E= {}, Pr_robust_w1choice= {}, Pr_robust_w2choice= {}".format(E, Pr_robust_w1choice, Pr_robust_w2choice) )
-    
-    Pr_robust_w1choice_l.append(Pr_robust_w1choice)
-    Pr_robust_w2choice_l.append(Pr_robust_w2choice)
-    
-  plot.plot(E_l, Pr_robust_w1choice_l, label='w/ 1-choice', c=NICE_BLUE, marker='o', ls=':', lw=2)
-  plot.plot(E_l, Pr_robust_w2choice_l, label='w/ 2-choice', c=NICE_ORANGE, marker='o', ls=':', lw=2)
-  plot.legend()
+  # plot_(choice=1)
+  # plot_(choice=2)
+  # plot_(choice=3)
+  
+  # for c in range(1, m+1):
+  for c in range(1, 5):
+    plot_(choice=c)
+  
+  plot_(choice=10)
+  plot_(choice=25)
+  plot_(choice=50)
+  plot_(choice=100)
+  
+  plot.legend(loc='lower left')
   plot.ylim([0, 1] )
-  plot.title('m= {}, C= {}'.format(m, C) )
+  plot.title('k= {}, m= {}, C= {}'.format(k, m, C) )
   plot.xlabel('E', fontsize=14)
   plot.ylabel('Pr{robust}', fontsize=14)
-  plot.savefig('plot_Pr_robust_sim_vs_model.png', bbox_inches='tight')
+  plot.savefig('plot_Pr_robust_wchoice_k{}_m{}_C{}.png'.format(k, m, C), bbox_inches='tight')
   log(INFO, "done; m= {}, C= {}".format(m, C) )
+
+def checking_Conjecture_following_Godfrey_claim():
+  # Claim: as soon as the number of choice is \Omega(log(m)) in a regular balanced setting,
+  # throwing m balls into m urns will result in O(1) maximum load w.h.p.
+  # [Godfrey, Balls and Bins with Structure: Balanced Allocations on Hypergraphs]
+  # (Our) Conjecture: Pouring E amount of water over m buckets set up with a regular balanced setting 
+  # with log(m) choice, maximum load will be E/m + O(1) w.h.p.
+  k = 100
+  
+  def test_conjecture(m, E):
+    choice = math.ceil(math.log2(m))
+    C = 2*E/m # + math.sqrt(E*math.log2(m)/m) + 2
+    bci = BucketConfInspector_regularbalanced(choice, k, m, C)
+    Pr_robust = bci.sim_frac_stable(E)
+    print("m= {}, E= {}, C= {}, choice= {}, Pr_robust= {}".format(m, E, C, choice, Pr_robust) )
+  
+  def test(m):
+    # for i in range(8):
+    for i in range(7, 15):
+      test_conjecture(m, E=2**i*100)
+  
+  # test(m=10)
+  # test(m=100)
+  test(m=1000)
+  
+  log(INFO, "done; k= {}".format(k) )
 
 if __name__ == "__main__":
   # m, C = 2, 10
@@ -124,4 +173,5 @@ if __name__ == "__main__":
   # print("bci= {}".format(bci) )
   
   # plot_Pr_robust_sim_vs_model()
-  plot_Pr_robust_wchoice()
+  # plot_Pr_robust_wchoice()
+  checking_Conjecture_following_Godfrey_claim()

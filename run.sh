@@ -10,7 +10,8 @@ elif [ $1 = 'p' ]; then
 elif [ $1 = 'e' ]; then
   $PY exp.py
 elif [ $1 = 'b' ]; then
-  # $PY bucket_model.py
+  $PY bucket_model.py
+elif [ $1 = 'bs' ]; then
   $PY bucket_sim.py
 else
   echo "Arg did not match!"
