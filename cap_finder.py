@@ -231,12 +231,14 @@ class ConfInspector(object):
     plot.savefig('plot_servcap_3d_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
     fig.clear()
   
-  def plot_servcap_2d(self, popmodel=None):
+  def plot_servcap_2d(self, popmodel=None, savename=None, color=None, ls=None):
     ## Service cap
     # '''
+    c = NICE_BLUE if color is None else color
+    ls = '-' if color is None else ls
     for simplex in self.hull.simplices:
       # print("x_l= {}, y_l= {}".format(self.points_inrows[simplex, 0], self.points_inrows[simplex, 1] ) )
-      plot.plot(self.points_inrows[simplex, 0], self.points_inrows[simplex, 1], c=NICE_BLUE, marker='o', ls='-', lw=3)
+      plot.plot(self.points_inrows[simplex, 0], self.points_inrows[simplex, 1], c=c, marker='o', ls=ls, lw=3)
     # plot.plot(self.points_inrows[self.hull.vertices, 0], self.points_inrows[self.hull.vertices, 1], 'r--', lw=2)
     # plot.plot(self.points_inrows[self.hull.vertices[0], 0], self.points_inrows[self.hull.vertices[0], 1], 'ro')
     # plot.fill(self.points_inrows[simplex, 0], self.points_inrows[simplex, 1], c=NICE_BLUE, alpha=0.5)
@@ -275,17 +277,20 @@ class ConfInspector(object):
       plot.text(0.6, 0.85, 'Covered mass= {}'.format(covered_mass),
         horizontalalignment='center', verticalalignment='center', transform = plot.gca().transAxes)
     
-    # plot.xlim((0, 2.1))
-    # plot.ylim((0, 2.1))
+    plot.xlim((0, 2.5))
+    plot.ylim((0, 2.5))
     prettify(plot.gca() )
     # plot.title('n= {}, k= {}'.format(self.n, self.k) )
-    plot.title('{}'.format(self.to_sysrepr() ) )
+    # plot.title('{}'.format(self.to_sysrepr() ) )
     plot.xlabel(r'$\lambda_a$', fontsize=20)
     plot.ylabel(r'$\lambda_b$', fontsize=20)
-    fig = plot.gcf()
-    fig.set_size_inches(3, 3)
-    plot.savefig('plot_servcap_2d_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
-    fig.clear()
+    
+    # fig = plot.gcf()
+    # fig.set_size_inches(3, 3)
+    # if savename is None:
+    #   savename = 'plot_servcap_2d_n{}_k{}.png'.format(self.n, self.k)
+    # plot.savefig(savename, bbox_inches='tight') # , bbox_extra_artists=[ax],
+    # fig.clear()
     log(INFO, "done.")
   
   def util(self, *args):
@@ -295,7 +300,7 @@ class ConfInspector(object):
     else:
       return np.sum(x)/self.n
     
-  def cost(self, *args):
+  def cost(self, *args, compute_outside_cap=False):
     def cost_insidecapregion(x):
       total_cost = 0
       for sys, rg_l in enumerate(self.sys__repgroup_l_l):
@@ -313,43 +318,46 @@ class ConfInspector(object):
     
     x = np.array(args).reshape((self.k, 1))
     if np.any(np.greater(np.dot(self.A, x), self.b) ):
-      # log(ERROR, "outside of capacity region;", x=x)
-      
-      # https://stackoverflow.com/questions/42248202/find-the-projection-of-a-point-on-the-convex-hull-with-scipy
-      def proj_mindistance(pt1, pt2, p):
-        # blog(x=x, pt1=pt1, pt2=pt2)
-        """ returns the projection of point p (and the distance) on the closest edge formed by the two points pt1 and pt2"""
-        v2 = pt2-pt1
-        l = np.sum(v2**2) # compute the squared distance between the 2 vertices
-        # blog(l=l, dot=np.dot(p-pt1, pt2-pt1)[0] )
-        t = np.max([0., np.min([1., np.dot(p-pt1, pt2-pt1)[0]/l] ) ] ) # np.min([1., np.dot(p-pt1, pt2-pt1)[0]/l] )
-        # blog(dot=np.dot(p-pt1, pt2-pt1), t=t)
-        proj = pt1 + t*(pt2-pt1)
-        return proj, np.sum((proj-p)**2) # project the point
-      
-      proj, mindistance = None, float('Inf')
-      for i in range(len(self.hull.vertices)):
-        p, m = proj_mindistance(self.points_inrows[self.hull.vertices[i] ], self.points_inrows[self.hull.vertices[(i+1) % len(self.hull.vertices) ] ], x.T)
-        if m < mindistance:
-          mindistance = m
-          proj = p
-      if proj is None:
-        log(ERROR, "proj= {}".format(proj) )
-        return 0
-      # blog(x=x.T[0], proj=proj)
-      dist_x_proj = abs(np.sum(x.T[0] - proj) )
-      # if dist_x_proj > 0.2:
-      #   print("---")
-      #   blog(x=x.T[0], proj=proj, x_proj=(x.T[0] - proj) )
-      return cost_insidecapregion(proj) + self.cost_ofgoingtocloud*dist_x_proj
+      if compute_outside_cap:
+        # log(ERROR, "outside of capacity region;", x=x)
+        
+        # https://stackoverflow.com/questions/42248202/find-the-projection-of-a-point-on-the-convex-hull-with-scipy
+        def proj_mindistance(pt1, pt2, p):
+          # blog(x=x, pt1=pt1, pt2=pt2)
+          """ returns the projection of point p (and the distance) on the closest edge formed by the two points pt1 and pt2"""
+          v2 = pt2-pt1
+          l = np.sum(v2**2) # compute the squared distance between the 2 vertices
+          # blog(l=l, dot=np.dot(p-pt1, pt2-pt1)[0] )
+          t = np.max([0., np.min([1., np.dot(p-pt1, pt2-pt1)[0]/l] ) ] ) # np.min([1., np.dot(p-pt1, pt2-pt1)[0]/l] )
+          # blog(dot=np.dot(p-pt1, pt2-pt1), t=t)
+          proj = pt1 + t*(pt2-pt1)
+          return proj, np.sum((proj-p)**2) # project the point
+        
+        proj, mindistance = None, float('Inf')
+        for i in range(len(self.hull.vertices)):
+          p, m = proj_mindistance(self.points_inrows[self.hull.vertices[i] ], self.points_inrows[self.hull.vertices[(i+1) % len(self.hull.vertices) ] ], x.T)
+          if m < mindistance:
+            mindistance = m
+            proj = p
+        if proj is None:
+          log(ERROR, "proj= {}".format(proj) )
+          return 0
+        # blog(x=x.T[0], proj=proj)
+        dist_x_proj = abs(np.sum(x.T[0] - proj) )
+        # if dist_x_proj > 0.2:
+        #   print("---")
+        #   blog(x=x.T[0], proj=proj, x_proj=(x.T[0] - proj) )
+        return cost_insidecapregion(proj) + self.cost_ofgoingtocloud*dist_x_proj
+      else:
+        return np.nan # 0
     else:
       return cost_insidecapregion(x.T[0] )
   
   def moment_cost(self, i, popmodel):
-    func = lambda *args: self.cost(*args)**i * popmodel.joint_pdf(*args)
+    func = lambda *args: self.cost(*args, compute_outside_cap=True)**i * popmodel.joint_pdf(*args)
     return popmodel.integrate_overpopmodel(func)
   
-  def plot_cost_2d(self, popmodel=None):
+  def plot_cost_2d(self, popmodel=None, savename=None):
     if popmodel is None:
       point_l = self.cap_boundary_point_l()
     else:
@@ -362,7 +370,7 @@ class ConfInspector(object):
     x_l, y_l = X.ravel(), Y.ravel()
     cost_l, util_l = [], []
     for i, x in enumerate(x_l):
-      cost = self.cost(x, y_l[i] )
+      cost = self.cost(x, y_l[i], compute_outside_cap=(popmodel is not None) )
       if popmodel is not None:
         cost *= popmodel.joint_pdf(x, y_l[i] )
       cost_l.append(cost)
@@ -371,14 +379,18 @@ class ConfInspector(object):
     fig = plot.gcf()
     # ax = plot.axes(projection='3d')
     ax = plot.gca()
+    
+    cost_m = np.ma.masked_where(np.isnan(cost_m), cost_m)
+    cmap = plot.cm.Reds
+    cmap.set_bad(color='white')
     # ax.plot_surface(x_l, y_l, cost_l, rstride=1, cstride=1, cmap='viridis', edgecolor='none')
     # ax.scatter(x_l, y_l, cost_l, c=cost_l, cmap='viridis', lw=0.5)
-    c = ax.pcolormesh(X, Y, cost_m, cmap='Reds')
+    c = ax.pcolormesh(X, Y, cost_m, cmap=cmap, vmin=0, vmax=4 if popmodel is None else 1.5)
     fig.colorbar(c, ax=ax)
     
     if popmodel is not None:
       covered_mass = self.integrate_overcaphyperlane(popmodel.joint_pdf)
-      plot.text(0.7, 0.9, 'Covered mass= {}'.format(covered_mass),
+      plot.text(0.7, 0.95, 'Covered mass= {}'.format(covered_mass),
         horizontalalignment='center', verticalalignment='center', transform = plot.gca().transAxes)
       
       ## Service cap
@@ -387,22 +399,26 @@ class ConfInspector(object):
       
       EC = self.moment_cost(1, popmodel)
       blog(EC=EC)
-      plot.text(0.7, 0.8, 'E[Cost]= {}'.format(EC),
+      plot.text(0.7, 0.85, 'E[Cost]= {}'.format(EC),
         horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
       
       Eutil = popmodel.integrate_overpopmodel(lambda x, y: self.util(x, y) * popmodel.joint_pdf(x, y) )
       blog(Eutil=Eutil)
-      plot.text(0.7, 0.7, 'E[Utilization]= {}'.format(round(Eutil, 2) ),
+      plot.text(0.7, 0.75, 'E[Utilization]= {}'.format(round(Eutil, 2) ),
         horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
     
+    plot.xlim((0, 2.5))
+    plot.ylim((0, 2.5))
     prettify(plot.gca() )
-    ax.set_title('{}'.format(self.to_sysrepr() ) )
+    # ax.set_title('{}'.format(self.to_sysrepr() ) )
     ax.set_xlabel(r'$\lambda_a$', fontsize=20)
     ax.set_ylabel(r'$\lambda_b$', fontsize=20)
     
     fig = plot.gcf()
-    fig.set_size_inches(5, 4)
-    plot.savefig('plot_cost_2d_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight') # , bbox_extra_artists=[ax], 
+    fig.set_size_inches(5, 3.5)
+    if savename is None:
+      savename = 'plot_cost_2d_n{}_k{}.png'.format(self.n, self.k)
+    plot.savefig(savename, bbox_inches='tight') # , bbox_extra_artists=[ax], 
     fig.clear()
     log(INFO, "done.")
   
@@ -464,37 +480,9 @@ class ConfInspector(object):
     fig.clear()
     log(INFO, "done;", n=self.n, k=self.k)
 
-def plot_capregion_blending_rep_coding():
-  def plot_capregion(G, c, ls):
-    cf = ConfInspector(G)
-    for simplex in cf.hull.simplices:
-      plot.plot(cf.points_inrows[simplex, 0], cf.points_inrows[simplex, 1], c=c, marker='.', ls=ls, lw=4)
-  
-  # a, a, a, a, b, b, b, b
-  G = np.array([[1, 0], [0, 1], [1, 0], [1, 0], [1, 0], [0, 1], [0, 1], [0, 1] ] ).T
-  plot_capregion(G, NICE_BLUE, '-')
-  # a, a, a, b, b, b, a+b, a+2b
-  G = np.array([[1, 0], [0, 1], [1, 0], [1, 0], [0, 1], [0, 1], [1, 1], [1, 2] ] ).T
-  plot_capregion(G, NICE_RED, '--')
-  # a, b, a+b, a+2b, a+3b, a+4b, a+5b, a+6b
-  G = np.array([[1, 0], [0, 1], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6] ] ).T
-  plot_capregion(G, NICE_ORANGE, ':')
-  # a+b, a+2b, a+3b, a+4b, a+5b, a+6b, a+7b, a+8b
-  G = np.array([[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8] ] ).T
-  plot_capregion(G, 'purple', '-.')
-  
-  prettify(plot.gca() )
-  plot.xlabel(r'$\lambda_a$', fontsize=20)
-  plot.ylabel(r'$\lambda_b$', fontsize=20)
-  fig = plot.gcf()
-  fig.set_size_inches(3, 3)
-  plot.savefig('plot_capregion_blending_rep_coding.png', bbox_inches='tight')
-  fig.clear()
-  log(INFO, "done.")
-
 if __name__ == "__main__":
-  # G = mds_conf_matrix(4, k=2)
-  G = custom_conf_matrix(3, k=2)
+  G = mds_conf_matrix(4, k=2)
+  # G = custom_conf_matrix(4, k=2)
   # G = mds_conf_matrix(4, k=3)
   cf = ConfInspector(G)
   print("cf.to_sysrepr= {}".format(cf.to_sysrepr() ) )
@@ -502,7 +490,8 @@ if __name__ == "__main__":
   # r, M, C = cf.r_M_C()
   # cf.cap_boundary_point_l()
   
-  # cf.plot_servcap_2d()
+  cf.plot_servcap_2d()
+  # cf.plot_cost_2d()
   # pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1, 2), arrate_rv=TNormal(1.5, 0.4) )
   # cf.plot_servcap_2d(pm)
   # cf.plot_cost_2d(pm)
@@ -512,5 +501,6 @@ if __name__ == "__main__":
   
   # cf.plot_servcap_3d()
   
-  plot_capregion_blending_rep_coding()
+  # plot_capregion_blending_rep_coding()
   
+  # plot_bsf_proposal()

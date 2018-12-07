@@ -83,7 +83,7 @@ def min_max_required_C(E, m):
 
 def min_required_g(k, E):
   for g in range(1, k):
-    m = int(k/g)
+    m = math.ceil(k/g) # int(k/g)
     if min_max_required_C(E, m)[1] <= 2**(g-1):
       return g
   return k
@@ -238,19 +238,20 @@ def plot_Pr_no_overflow():
     triang = mtri.Triangulation(C_l, m_l)
     ax.plot_trisurf(triang, p_l, cmap=plot.cm.Spectral, edgecolor='none')
     
-    ax.set_xlabel('C', fontsize=18)
+    fontsize = 18
+    ax.set_xlabel('C', fontsize=fontsize)
     ax.set_xlim(xmin=0)
-    ax.set_ylabel('m', fontsize=18)
+    ax.set_ylabel('m', fontsize=fontsize)
     ax.set_ylim(ymin=0)
-    ax.set_zlabel('Pr{E-robust}', fontsize=18)
+    ax.set_zlabel(r'Pr{$\Sigma$-robust}', fontsize=fontsize)
     ax.set_zlim(zmin=0, zmax=1)
-    plot.title('E= {}'.format(E), fontsize=18)
+    plot.title(r'$\Sigma= {}$'.format(E), fontsize=fontsize)
     ax.view_init(30, -105)
     plot.savefig('plot_Pr_no_overflow_w_varying_C_m.png', bbox_inches='tight')
     fig.clear()
     
-    plot.plot(C_critical_l, m_critical_l, label='{} >= {}'.format('Pr{E-robust}', p_critical), c=NICE_BLUE, marker='.', ls='none')
-    plot.plot(C_approxcritical_l, m_approxcritical_l, label='Approx {} >= {}'.format('Pr{E-robust}', p_critical), c=NICE_RED, marker='.', ls='none')
+    plot.plot(C_critical_l, m_critical_l, label=r'Pr{$\Sigma$-robust} $\geq$ ' + str(p_critical), c=NICE_BLUE, marker='.', ls='none')
+    plot.plot(C_approxcritical_l, m_approxcritical_l, label=r'Approx Pr{$\Sigma$-robust} $\geq$ ' + str(p_critical), c=NICE_RED, marker='.', ls='none')
     # x_l, y_l = [], []
     # constant = 150
     # for x in np.linspace(0, max(C_critical_l), 1000):
@@ -259,10 +260,10 @@ def plot_Pr_no_overflow():
     # plot.plot(x_l, y_l, label='x*y={}'.format(constant), c=NICE_RED, marker='.', ls='-')
     
     plot.legend()
-    plot.xlabel('C', fontsize=18)
-    plot.ylabel('m', fontsize=18)
+    plot.xlabel('C', fontsize=fontsize)
+    plot.ylabel('m', fontsize=fontsize)
     plot.ylim([0, max(m_critical_l) ] )
-    plot.title('E= {}'.format(E), fontsize=18)
+    plot.title(r'$\Sigma= {}$'.format(E), fontsize=fontsize)
     plot.savefig('plot_Pr_no_overflow_critical_boundary.png', bbox_inches='tight')
     fig.clear()
     # for angle in range(0, 360):
@@ -276,31 +277,32 @@ def k_from_max_group_size(max_gs):
   return reduce(lambda x,y: x*y//gcd(x, y), range(1, max_gs+1) ) # least common multiple
 
 def compare_varying_groupsize(max_gs):
-  E = 100 # 420 # 200 # 100
+  E = 100 # 420 # 200
   k = k_from_max_group_size(max_gs)
   log(INFO, "max_gs= {}, k= {}".format(max_gs, k) )
   
   min_g = min_required_g(k, E)
   print("min_g= {}".format(min_g) )
   
-  g_l, p_l, nservers_l = [], [], []
+  g_l, p_l, nnodes_l = [], [], []
   for g in range(1, max_gs+3):
     g_l.append(g)
     m = int(k/g)
     
     # Encode with simplex
-    num_servers = m*(2**g - 1)
+    num_nodes = m*(2**g - 1)
     b = 2**(g-1)
     
     # p = Pr_no_overflow(E, m, b)
     p = Pr_no_overflow_cont(E, m, b)
-    print('g= {}, p= {}, num_servers= {}'.format(g, p, num_servers) )
+    print('g= {}, p= {}, num_nodes= {}'.format(g, p, num_nodes) )
     p_l.append(p)
     
-    nservers_l.append(num_servers)
+    nnodes_l.append(num_nodes)
   
+  fontsize = 18
+  '''
   fig, axs = plot.subplots(1, 2)
-  fontsize = 14
   ## Pr{robust}
   ax = axs[0]
   plot.sca(ax)
@@ -310,18 +312,29 @@ def compare_varying_groupsize(max_gs):
   plot.ylim([0, 1.1] )
   prettify(ax)
   
-  ## Number of servers
+  ## Number of nodes
   ax = axs[1]
   plot.sca(ax)
-  plot.plot(g_l, nservers_l, c=NICE_RED, marker='o', ls='-')
+  plot.plot(g_l, nnodes_l, c=NICE_RED, marker='o', ls='-')
   plot.xlabel('g', fontsize=fontsize)
-  plot.ylabel('Total number of servers', fontsize=fontsize)
+  plot.ylabel('Total number of nodes', fontsize=fontsize)
   prettify(ax)
   
-  st = plot.suptitle(r'k= {}, $\Sigma$= {}, asymptotic min g= {}'.format(k, E, min_g), fontsize=fontsize)
+  st = plot.suptitle(r'k= {}, $\Sigma$= {}, asymptotic min g= {}'.format(k, E, min_g), y=1, fontsize=fontsize)
   plot.subplots_adjust(wspace=0.3)
   fig.set_size_inches(2*4.5, 3.5)
   plot.savefig('plot_Pr_robustness_w_varying_g_E{}.png'.format(E), bbox_extra_artists=[st], bbox_inches='tight')
+  '''
+  
+  plot.plot(g_l, p_l, c=NICE_BLUE, marker='o', ls='-')
+  plot.xlabel('g', fontsize=fontsize)
+  plot.ylabel(r'Pr{$\Sigma$-robustness}', fontsize=fontsize)
+  plot.ylim([0, 1.1] )
+  prettify(plot.gca() )
+  
+  plot.title(r'k= {}, $\Sigma$= {}'.format(k, E) + '\nasymptotic min g= {}'.format(min_g), y=1, fontsize=fontsize)
+  plot.gcf().set_size_inches(4, 3.5)
+  plot.savefig('plot_Pr_robustness_w_varying_g_E{}.png'.format(E), bbox_inches='tight')
   plot.gcf().clear()
   log(INFO, "done; E= {}, max_gs= {}".format(E, max_gs) )
 
@@ -338,7 +351,7 @@ def plot_Pr_no_overflow_wchoice():
       Pr_no_overflow_l.append(p)
       if p < 0.01:
         break
-    plot.plot(E_l, Pr_no_overflow_l, label='{}-choice'.format(choice), c=next(dark_color), marker='o', ls=':', lw=2)
+    plot.plot(E_l, Pr_no_overflow_l, label='{}-choice'.format(choice), c=next(dark_color_c), marker='o', ls=':', lw=2)
   
   for c in range(1, 5):
     plot_(choice=c)
@@ -351,38 +364,63 @@ def plot_Pr_no_overflow_wchoice():
   plot.savefig('plot_Pr_no_overflow_wchoice_m{}_C{}.png'.format(m, C), bbox_inches='tight')
   log(INFO, "done; m= {}, C= {}".format(m, C) )
 
-def if_resource_reduction_possible_wchoice(max_gs):
+def plot_if_resource_reduction_possible_wchoice(max_gs):
   k = k_from_max_group_size(max_gs)
   log(INFO, "max_gs= {}, k= {}".format(max_gs, k) )
   
-  g_wchoice = lambda m: k*math.ceil(math.log2(m))/m
-  cap_wchoice = lambda m: 2**(g_wchoice(m) - 1)
+  g_wchoice = lambda m: k*math.ceil(math.log(m))//m
+  def cap_wchoice(m):
+    try:
+      return 2**(g_wchoice(m) - 1)
+    except OverflowError:
+      return float('inf')
   # Suppose when each object has >log(m) choice, maximum load will be E/m + 1.
   def max_m_wchoice(E):
-    m = 2
+    m = 3 # 2
     while True:
-      if cap_wchoice(m) < 2*math.ceil(E/m): # E/m + 2:
+      # log(INFO, "m= {}".format(m) )
+      if cap_wchoice(m) < E/m*math.sqrt(2*math.log(math.log(m)) + math.log(m) ): # E/m*math.sqrt(math.log(m)): # E/m + 2: # E/m*2:
         break
       m += 1
+      if m > k*math.ceil(math.log(m)):
+        break
     return m - 1
   
-  def nservers_wchoice(E):
+  def nnodes_wchoice(E):
     m = max_m_wchoice(E)
     log(INFO, "m= {}".format(m) )
     return m*(2**g_wchoice(m) - 1)
   
-  def nservers_wochoice(E):
+  def nnodes_wochoice(E):
     g = min_required_g(k, E)
     m = k/g
     log(INFO, "m= {}".format(m) )
     return m*(2**g - 1)
   
-  for E in np.linspace(100, 3*k, 20):
-    blog(E=E,
-      nservers_wochoice=nservers_wochoice(E),
-      nservers_wchoice=nservers_wchoice(E) )
+  E_l, nnodes_wochoice_l, nnodes_wchoice_l = [], [], []
+  for E in np.linspace(k/10, 10*k, 40):
+  # for E in np.linspace(k/10, 30*k, 100):
+    ns_wochoice = nnodes_wochoice(E)
+    ns_wchoice = nnodes_wchoice(E)
     print("---")
+    blog(E=E, nnodes_wochoice=ns_wochoice, nnodes_wchoice=ns_wchoice)
+    
+    E_l.append(E)
+    nnodes_wochoice_l.append(ns_wochoice)
+    nnodes_wchoice_l.append(ns_wchoice)
+  plot.plot(E_l, nnodes_wochoice_l, label=r'$d=1$', c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, ms=6)
+  plot.plot(E_l, nnodes_wchoice_l, label=r'$d=\left\lceil{log_2(m)}\right\rceil$', c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, ms=6)
   
+  fontsize = 16
+  plot.legend(loc='upper left', framealpha=0.5, fontsize=fontsize)
+  plot.title('k= {}'.format(k), fontsize=fontsize)
+  plot.xlabel(r'$\Sigma$', fontsize=fontsize)
+  plot.xticks(rotation=70)
+  plot.ylabel('Total number of nodes\n' + 'required for P > 0.99', fontsize=fontsize)
+  plot.gcf().set_size_inches(5, 4.5)
+  plot.savefig('plot_if_resource_reduction_possible_wchoice_k{}.png'.format(k), bbox_inches='tight')
+  log(INFO, "done; k= {}".format(k) )
+
 if __name__ == "__main__":
   '''
   def exp(n, m, b):
@@ -397,4 +435,4 @@ if __name__ == "__main__":
   # plot_Pr_no_overflow()
   # compare_varying_groupsize(max_gs=7)
   # plot_Pr_no_overflow_wchoice()
-  if_resource_reduction_possible_wchoice(max_gs=7)
+  plot_if_resource_reduction_possible_wchoice(max_gs=7)

@@ -49,14 +49,32 @@ class BucketConfInspector(object):
     # blog(x_val=x.value)
     return prob.status == 'optimal'
   
-  def sim_frac_stable(self, cum_demand, nsamples=400):
+  def is_stable_w_naivesplit(self, d_l):
+    '''
+     Rather than searching through all distribution vector x's, we restrict ourselves here on
+     the naive splitting of demand for object-i uniformly across all its buckets.
+    Result: Naive split cannot capture the benefit of multiple choice;
+     Pr{robustness} with naive split is much lower than actual.
+    '''
+    x = np.zeros((self.l, 1) ) # self.l*[0]
+    i = 0
+    for obj, bucket_l in self.obj__bucket_l_m.items():
+      j = i + len(bucket_l)
+      x[i:j, 0] = d_l[obj]/len(bucket_l)
+      i = j
+    # y = np.matmul(self.M, x)
+    # z = np.less_equal(y, np.array(self.m*[self.C] ).reshape((self.m, 1)) )
+    # log(INFO, "", y=y, z=z)
+    return np.all(np.less_equal(np.matmul(self.M, x), np.array(self.m*[self.C] ).reshape((self.m, 1)) ) )
+  
+  def sim_frac_stable(self, cum_demand, nsamples=10**3, w_naivesplit=False):
     nstable = 0
     for i in range(nsamples):
       rand_l = sorted(np.random.uniform(size=(self.k-1, 1) ) )
       d_l = np.array([rand_l[0]] + \
         [rand_l[i+1] - rand_l[i] for i in range(len(rand_l)-1) ] + \
         [1 - rand_l[-1]] ) * cum_demand
-      stable = self.is_stable(d_l)
+      stable = self.is_stable(d_l) # if not w_naivesplit else self.is_stable_w_naivesplit(d_l)
       # blog(d_l=d_l, stable=stable)
       
       nstable += int(stable)
@@ -103,40 +121,52 @@ def BucketConfInspector_regularbalanced(choice, k, m, C):
 def plot_Pr_robust_wchoice():
   # k, m, C = 4, 4, 5
   # k, m, C = 10, 10, 5
-  k, m, C = 100, 100, 5
+  k, m, C = 100, 50, 5
   
   def plot_(choice):
-    print("choice= {}".format(choice) )
+    log(INFO, "choice= {}".format(choice) )
     bci = BucketConfInspector_regularbalanced(choice, k, m, C)
     E_l, Pr_robust_l = [], []
+    # Pr_robust_w_naivesplit_l = []
     for E in np.linspace(C, (m+1)*C, 20):
+      print(">> E= {}".format(E) )
       E_l.append(E)
       Pr_robust = bci.sim_frac_stable(cum_demand=E)
-      print("E= {}, Pr_robust= {}".format(E, Pr_robust) )
+      blog(Pr_robust=Pr_robust)
+      # Pr_robust_w_naivesplit = bci.sim_frac_stable(cum_demand=E, w_naivesplit=True)
+      # blog(Pr_robust_w_naivesplit=Pr_robust_w_naivesplit)
+      
       Pr_robust_l.append(Pr_robust)
+      # Pr_robust_w_naivesplit_l.append(Pr_robust_w_naivesplit)
       if Pr_robust < 0.01:
         break
-    plot.plot(E_l, Pr_robust_l, label='{}-choice'.format(choice), c=next(dark_color), marker='o', ls=':', lw=2)
+    plot.plot(E_l, Pr_robust_l, label='d={}'.format(choice), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0.5, ms=7)
+    # plot.plot(E_l, Pr_robust_w_naivesplit_l, label='d={}, w/ naive split'.format(choice), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0, ms=7)
   
   # plot_(choice=1)
   # plot_(choice=2)
   # plot_(choice=3)
+  # plot_(choice=4)
   
   # for c in range(1, m+1):
-  for c in range(1, 5):
+  # plot_(choice=1)
+  # plot_(choice=2)
+  
+  # plot_(choice=1)
+  for c in range(1, 8):
     plot_(choice=c)
-  
   plot_(choice=10)
-  plot_(choice=25)
-  plot_(choice=50)
-  plot_(choice=100)
+  # plot_(choice=m)
   
-  plot.legend(loc='lower left')
+  fontsize = 18
+  plot.legend(loc='lower left', framealpha=0.5, fontsize=fontsize)
   plot.ylim([0, 1] )
-  plot.title('k= {}, m= {}, C= {}'.format(k, m, C) )
-  plot.xlabel('E', fontsize=14)
-  plot.ylabel('Pr{robust}', fontsize=14)
+  plot.title('k= {}, m= {}, C= {}'.format(k, m, C), fontsize=fontsize)
+  plot.xlabel(r'$\Sigma$', fontsize=fontsize)
+  plot.ylabel('Pr{$\Sigma$-robustness}', fontsize=fontsize)
+  # plot.gcf().set_size_inches(8, 7)
   plot.savefig('plot_Pr_robust_wchoice_k{}_m{}_C{}.png'.format(k, m, C), bbox_inches='tight')
+  # plot.gcf().clear()
   log(INFO, "done; m= {}, C= {}".format(m, C) )
 
 def checking_Conjecture_following_Godfrey_claim():
@@ -145,23 +175,26 @@ def checking_Conjecture_following_Godfrey_claim():
   # [Godfrey, Balls and Bins with Structure: Balanced Allocations on Hypergraphs]
   # (Our) Conjecture: Pouring E amount of water over m buckets set up with a regular balanced setting 
   # with log(m) choice, maximum load will be E/m + O(1) w.h.p.
-  k = 100
+  k = 400
+  log(INFO, "k= {}".format(k) )
   
   def test_conjecture(m, E):
-    choice = math.ceil(math.log2(m))
-    C = 2*E/m # + math.sqrt(E*math.log2(m)/m) + 2
+    choice = math.ceil(math.log(m))
+    C = E/m*math.sqrt(2*math.log(math.log(m)) + math.log(m) ) # + 1 # E/m + math.sqrt(E/m) # 2*E/m
     bci = BucketConfInspector_regularbalanced(choice, k, m, C)
     Pr_robust = bci.sim_frac_stable(E)
     print("m= {}, E= {}, C= {}, choice= {}, Pr_robust= {}".format(m, E, C, choice, Pr_robust) )
   
   def test(m):
     # for i in range(8):
-    for i in range(7, 15):
+    # for i in range(7, 15):
+    # for i in range(11, 15):
+    for i in range(12):
       test_conjecture(m, E=2**i*100)
   
   # test(m=10)
+  test(m=50)
   # test(m=100)
-  test(m=1000)
   
   log(INFO, "done; k= {}".format(k) )
 
