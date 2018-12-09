@@ -1,4 +1,5 @@
 import math, scipy
+from scipy.stats import *
 from scipy import special
 import numpy as np
 
@@ -46,8 +47,56 @@ def Pr_no_overflow_cont(E, m, C): # = Pr{M < C/E}
     p = 0
   return p
 
-def Pr_no_overflow_wchoice_cont(choice, E, m, C):
-  # log(INFO, "starting;", choice=choice, E=E, m=m, C=C)
+def Pr_no_overflow_wchoice_cont(E, m, C, d):
+  """
+  c = C/E
+  ranges = []
+  for i in range(1, m):
+    '''
+    nquad feeds arguments to u by reducing one from the head at a time.
+    e.g., for func(x0, x1, x2, x3)
+    ranges shall be 
+    [lim0(x1, x2, x3)
+     lim1(x2, x3)
+     lim2(x3)
+     lim3() ]
+    '''
+    ## \int func dU(m-1), ..., dU(1)
+    def u(*args, i=i):
+      # print("i= {}, args= {}".format(i, args) )
+      # if len(args) == 0:
+      ul = (m-i)*c + (d-1)*c
+      if i == m-1:
+        return 0, min(1, ul)
+      elif i == 1:
+        # return max(args[0], 1-c), min(1, ul)
+        return args[0], min(1, ul)
+      return args[0], min(1, ul)
+    ranges.append(u)
+  m_1_fact = math.factorial(m-1)
+  density = lambda *args: m_1_fact
+  result, abserr = scipy.integrate.nquad(density, ranges)
+  # blog(result=result, abserr=abserr)
+  return round(result, 2)
+  """
+  # return Pr_no_overflow_cont(E, m, d*C)
+  
+  '''
+  Gamma_d = scipy.stats.gamma(d)
+  Gamma_m__d = scipy.stats.gamma(m-d)
+  c = C/E
+  dc = d*c
+  func = lambda x: Gamma_m__d.cdf((1-dc)/dc*x)*Gamma_d.pdf(x)
+  result, abserr = scipy.integrate.quad(func, 0, np.inf)
+  # log(INFO, "result= {}, abserr= {}".format(result, abserr) )
+  return 1 - result
+  '''
+  
+  # return Pr_no_overflow_cont(E, m/d, d*C) # LB in load balancing performance
+  # return math.exp(-math.exp(-(m*C/E - math.log(m) ) ) )
+
+def _Pr_no_overflow_wchoice_cont(E, m, C, choice):
+  # log(INFO, "starting;", E=E, m=m, C=C, choice=choice)
   if E <= 0:
     return 0
   
@@ -339,21 +388,24 @@ def compare_varying_groupsize(max_gs):
   log(INFO, "done; E= {}, max_gs= {}".format(E, max_gs) )
 
 def plot_Pr_no_overflow_wchoice():
-  m, C = 10, 5
-  
+  m, C = 10, 5 # 5, 5
+  log(INFO, "m= {}, C= {}".format(m, C) )
   def plot_(choice):
     print("choice= {}".format(choice) )
     E_l, Pr_no_overflow_l = [], []
     for E in np.linspace(C, m*C, 20):
+      print(">> E= {}".format(E) )
       E_l.append(E)
-      p = Pr_no_overflow_wchoice_cont(choice, E, m, C)
-      print("E= {}, Pr_no_overflow= {}".format(E, p) )
+      p = Pr_no_overflow_wchoice_cont(E, m, C, choice)
+      print("Pr_no_overflow= {}".format(p) )
+      # _p = _Pr_no_overflow_wchoice_cont(E, m, C, choice)
+      # blog(_Pr_no_overflow=_p)
       Pr_no_overflow_l.append(p)
       if p < 0.01:
         break
     plot.plot(E_l, Pr_no_overflow_l, label='{}-choice'.format(choice), c=next(dark_color_c), marker='o', ls=':', lw=2)
   
-  for c in range(1, 5):
+  for c in range(1, m):
     plot_(choice=c)
   
   plot.legend(loc='lower left')
@@ -379,7 +431,7 @@ def plot_if_resource_reduction_possible_wchoice(max_gs):
     m = 3 # 2
     while True:
       # log(INFO, "m= {}".format(m) )
-      if cap_wchoice(m) < E/m*math.sqrt(2*math.log(math.log(m)) + math.log(m) ): # E/m*math.sqrt(math.log(m)): # E/m + 2: # E/m*2:
+      if cap_wchoice(m) < E/m*math.log(2*math.log(math.log(m)) + math.log(m) ): # E/m*math.sqrt(math.log(m)): # E/m + 2: # E/m*2:
         break
       m += 1
       if m > k*math.ceil(math.log(m)):
@@ -409,7 +461,7 @@ def plot_if_resource_reduction_possible_wchoice(max_gs):
     nnodes_wochoice_l.append(ns_wochoice)
     nnodes_wchoice_l.append(ns_wchoice)
   plot.plot(E_l, nnodes_wochoice_l, label=r'$d=1$', c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, ms=6)
-  plot.plot(E_l, nnodes_wchoice_l, label=r'$d=\left\lceil{log_2(m)}\right\rceil$', c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, ms=6)
+  plot.plot(E_l, nnodes_wchoice_l, label=r'$d=\left\lceil{log(m)}\right\rceil$', c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, ms=6)
   
   fontsize = 16
   plot.legend(loc='upper left', framealpha=0.5, fontsize=fontsize)
@@ -434,5 +486,5 @@ if __name__ == "__main__":
   
   # plot_Pr_no_overflow()
   # compare_varying_groupsize(max_gs=7)
-  # plot_Pr_no_overflow_wchoice()
-  plot_if_resource_reduction_possible_wchoice(max_gs=7)
+  plot_Pr_no_overflow_wchoice()
+  # plot_if_resource_reduction_possible_wchoice(max_gs=7)
