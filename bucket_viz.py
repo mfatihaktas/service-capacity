@@ -21,9 +21,10 @@ def plot_robustornot():
         ar3_overflow_l.append(ar3)
   fig = plot.figure()
   ax = plot.axes(projection='3d')
-  ax.scatter3D(ar1_robust_l, ar2_robust_l, ar3_robust_l, label='Robust', c='blue')
-  ax.scatter3D(ar1_overflow_l, ar2_overflow_l, ar3_overflow_l, c='red')
+  ax.scatter3D(ar1_robust_l, ar2_robust_l, ar3_robust_l, label='Stable', c='blue')
+  ax.scatter3D(ar1_overflow_l, ar2_overflow_l, ar3_overflow_l, label='Unstable', c='red')
   
+  plot.legend()
   fontsize = 18
   ax.set_xlabel(r'$\lambda_1$', fontsize=fontsize)
   ax.set_xlim(xmin=0)

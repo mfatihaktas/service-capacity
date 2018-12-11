@@ -25,17 +25,11 @@ Lemma 2.4: [https://projecteuclid.org/download/pdf_1/euclid.aop/1176994313]
 def Pr_no_overflow_cont_approx(E, m, C): # = Pr{M < C/E}
   return math.exp(-math.exp(-(m*C/E - math.log(m) ) ) )
 
-def Pr_no_overflow_cont(E, m, C): # = Pr{M < C/E}
-  # log(INFO, "starting;", E=E, m=m, C=C)
-  if E <= 0:
-    return 1
-  elif C < 0:
+def Pr_max_uniform_spacing_leq_x(m, x):
+  if x <= 0:
     return 0
-  elif C == 0:
-    return E == 0
-  s = 0
-  x = C/E
   i = 1
+  s = 0
   while True:
     if i*x >= 1:
       break
@@ -46,6 +40,16 @@ def Pr_no_overflow_cont(E, m, C): # = Pr{M < C/E}
   if p < 0 or p >= 1.001:
     p = 0
   return p
+
+def Pr_no_overflow_cont(E, m, C): # = Pr{M < C/E}
+  # log(INFO, "starting;", E=E, m=m, C=C)
+  if E <= 0:
+    return 1
+  elif C < 0:
+    return 0
+  elif C == 0:
+    return E == 0
+  return Pr_max_uniform_spacing_leq_x(m, C/E)
 
 def Pr_no_overflow_wchoice_cont(E, m, C, d):
   """
@@ -94,6 +98,8 @@ def Pr_no_overflow_wchoice_cont(E, m, C, d):
   
   # return Pr_no_overflow_cont(E, m/d, d*C) # LB in load balancing performance
   # return math.exp(-math.exp(-(m*C/E - math.log(m) ) ) )
+  
+  return Pr_max_uniform_spacing_leq_x(m, d*C/E) # min(E, d*C)
 
 def _Pr_no_overflow_wchoice_cont(E, m, C, choice):
   # log(INFO, "starting;", E=E, m=m, C=C, choice=choice)
@@ -388,7 +394,7 @@ def compare_varying_groupsize(max_gs):
   log(INFO, "done; E= {}, max_gs= {}".format(E, max_gs) )
 
 def plot_Pr_no_overflow_wchoice():
-  m, C = 10, 5 # 5, 5
+  m, C = 100, 5 # 5, 5
   log(INFO, "m= {}, C= {}".format(m, C) )
   def plot_(choice):
     print("choice= {}".format(choice) )
@@ -405,7 +411,8 @@ def plot_Pr_no_overflow_wchoice():
         break
     plot.plot(E_l, Pr_no_overflow_l, label='{}-choice'.format(choice), c=next(dark_color_c), marker='o', ls=':', lw=2)
   
-  for c in range(1, m):
+  # for c in range(1, m):
+  for c in range(1, math.ceil(math.log(m)) + 2):
     plot_(choice=c)
   
   plot.legend(loc='lower left')
