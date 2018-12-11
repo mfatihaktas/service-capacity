@@ -192,13 +192,13 @@ class BucketConfInspector(object):
     
     plot.legend()
     fontsize = 18
-    ax.set_xlabel(r'$\lambda_1$', fontsize=fontsize)
+    ax.set_xlabel(r'$\lambda_a$', fontsize=fontsize)
     ax.set_xlim(xmin=0)
-    ax.set_ylabel(r'$\lambda_2$', fontsize=fontsize)
+    ax.set_ylabel(r'$\lambda_b$', fontsize=fontsize)
     ax.set_ylim(ymin=0)
-    ax.set_zlabel(r'$\lambda_3$', fontsize=fontsize)
+    ax.set_zlabel(r'$\lambda_c$', fontsize=fontsize)
     ax.set_zlim(zmin=0)
-    plot.title(r'$k= {}$, $m= {}$, $C= {}$, $d= {}$'.format(self.k, self.m, self.C, d) + '\n Volume= {}'.format(hull.volume), fontsize=fontsize)
+    plot.title(r'$k= {}$, $m= {}$, $C= {}$, $d= {}$'.format(self.k, self.m, self.C, d) + '\n Volume= {0:.2f}'.format(hull.volume), fontsize=fontsize)
     ax.view_init(20, 30)
     plot.savefig('plot_cap_C{}_d{}.png'.format(self.C, d), bbox_inches='tight')
     fig.clear()
@@ -216,7 +216,7 @@ if __name__ == "__main__":
   # blog(np_version=np.__version__)
   
   k, m, C = 3, 3, 5
-  d = 2
+  d = 3 # 1 # 2
   bci = BucketConfInspector_regularbalanced(k, m, C, d)
   bci.plot_cap(d)
   

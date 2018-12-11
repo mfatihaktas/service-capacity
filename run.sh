@@ -15,7 +15,8 @@ elif [ $1 = 'e' ]; then
 elif [ $1 = 'b' ]; then
   # $PY bucket_model.py
   # $PY bucket_viz.py
-  $PY bucket_wchoice.py
+  # $PY bucket_wchoice.py
+  $PY bucket_wcode.py
 elif [ $1 = 'bs' ]; then
   $PY bucket_sim.py
 else
