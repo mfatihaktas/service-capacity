@@ -8,7 +8,12 @@ import numpy as np
 from scipy import spatial
 from scipy.spatial import HalfspaceIntersection
 
+import mpl_toolkits.mplot3d
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
 from bucket_model import *
+from plot_polygon import *
 
 class BucketConfInspector(object):
   def __init__(self, m, C, obj__bucket_l_m):
@@ -157,29 +162,33 @@ class BucketConfInspector(object):
       z_l.append(y[2] )
     # '''
     # x_l, y_l, z_l = zip(*hs.intersections)
-    ax.scatter3D(x_l, y_l, z_l, label='Vertices', c='red')
+    # ax.scatter3D(x_l, y_l, z_l, label='Vertices', c='red')
     
-    intersections = hs.intersections
-    hull = scipy.spatial.ConvexHull(intersections)
-    # for simplex in hull.simplices:
-    #   ax.plot3D(intersections[simplex, 0], intersections[simplex, 1], intersections[simplex, 2], c=NICE_BLUE, marker='o')
+    points = np.column_stack((x_l, y_l, z_l))
+    hull = scipy.spatial.ConvexHull(points)
+    for simplex in hull.simplices:
+      # print("points[simplex, :]= {}".format(points[simplex, 0] ) )
+      simplex = np.append(simplex, simplex[0] ) # https://stackoverflow.com/questions/27270477/3d-convex-hull-from-point-cloud
+      ax.plot3D(points[simplex, 0], points[simplex, 1], points[simplex, 2], c=NICE_BLUE, marker='o')
     
-    cent = np.mean(intersections, 0)
-    pts = []
-    for pt in points[hull.simplices]:
-        pts.append(pt[0].tolist())
-        pts.append(pt[1].tolist())
+    faces = hull.simplices
+    verts = points
+    triangles = []
+    for s in faces:
+      sq = [
+        (verts[s[0], 0], verts[s[0], 1], verts[s[0], 2]),
+        (verts[s[1], 0], verts[s[1], 1], verts[s[1], 2]),
+        (verts[s[2], 0], verts[s[2], 1], verts[s[2], 2]) ]
+      triangles.append(sq)
     
-    pts.sort(key=lambda p: np.arctan2(p[1] - cent[1],
-                                    p[0] - cent[0]))
-    pts = pts[0::2]  # Deleting duplicates
-    pts.insert(len(pts), pts[0])
-    k = 1.1
-    color = 'green'
-    poly = Polygon(k*(np.array(pts)- cent) + cent,
-                   facecolor=color, alpha=0.2)
-    poly.set_capstyle('round')
-    plt.gca().add_patch(poly)
+    new_faces = simplify(triangles)
+    for sq in new_faces:
+      f = mpl_toolkits.mplot3d.art3d.Poly3DCollection([sq] )
+      # f.set_color(matplotlib.colors.rgb2hex(scipy.rand(20) ) )
+      f.set_color(next(dark_color_c) )
+      f.set_edgecolor('k')
+      f.set_alpha(0.15) # 0.2
+      ax.add_collection3d(f)
     
     plot.legend()
     fontsize = 18
@@ -189,7 +198,7 @@ class BucketConfInspector(object):
     ax.set_ylim(ymin=0)
     ax.set_zlabel(r'$\lambda_3$', fontsize=fontsize)
     ax.set_zlim(zmin=0)
-    plot.title(r'$k= {}$, $m= {}$, $C= {}$, $d= {}$'.format(self.k, self.m, self.C, d), fontsize=fontsize)
+    plot.title(r'$k= {}$, $m= {}$, $C= {}$, $d= {}$'.format(self.k, self.m, self.C, d) + '\n Volume= {}'.format(hull.volume), fontsize=fontsize)
     ax.view_init(20, 30)
     plot.savefig('plot_cap_C{}_d{}.png'.format(self.C, d), bbox_inches='tight')
     fig.clear()
