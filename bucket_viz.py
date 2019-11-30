@@ -3,7 +3,7 @@ from bucket_sim import *
 def plot_robustornot():
   k, m, C = 3, 3, 4
   d = 1 # 2 # 1
-  bci = BucketConfInspector_regularbalanced(k, m, C, d)
+  bci = BucketConfInspector_roundrobin(k, m, C, d)
   E = 10
   
   ar1_robust_l, ar2_robust_l, ar3_robust_l = [], [], []

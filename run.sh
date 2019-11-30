@@ -3,7 +3,7 @@ echo $1 $2 $3
 
 PY=python3
 
-if [ $1 = 'source' ]; then
+if [ $1 = 'init' ]; then
   source /home/mfa51/service-capacity-virtualenv/bin/activate
 elif [ $1 = 'c' ]; then
   $PY cap_finder.py
@@ -15,7 +15,11 @@ elif [ $1 = 'e' ]; then
 elif [ $1 = 'b' ]; then
   # $PY bucket_model.py
   # $PY bucket_viz.py
-  # $PY bucket_wchoice.py
+  $PY bucket_wchoice.py
+  # $PY bucket_conjecture.py
+elif [ $1 = 'l' ]; then
+  $PY load_imbalance.py
+elif [ $1 = 'v' ]; then
   $PY bucket_wcode.py
 elif [ $1 = 'bs' ]; then
   $PY bucket_sim.py

@@ -256,6 +256,31 @@ def plot_Pr_no_overflow():
   fig.clear()
   '''
   
+  def plot_critical_boundary(E):
+    p_critical = 0.99
+    def plot_(Pr_no_overflow, label, color):
+      C_l, m_l = [], []
+      for C in np.linspace(0, E*0.8, 80):
+        for m in range(1, int(E/2) ):
+          if Pr_no_overflow(E, m, C) >= p_critical:
+            C_l.append(C)
+            m_l.append(m)
+            break
+      plot.plot(C_l, m_l, label=label, c=color, marker=next(marker_c), ls=':')
+    
+    plot_(Pr_no_overflow_cont, label=r'$P \geq {}$'.format(p_critical), color=NICE_BLUE)
+    plot_(Pr_no_overflow_cont_approx, label=r'Approximate $P \geq {}$'.format(p_critical), color=NICE_RED)
+    
+    fontsize = 18
+    plot.legend(frameon=False, fontsize=fontsize)
+    plot.xlabel('C', fontsize=fontsize)
+    plot.ylabel('m', fontsize=fontsize)
+    prettify(plot.gca() )
+    plot.gcf().set_size_inches(6, 4)
+    # plot.title(r'$\Sigma= {}$'.format(E), fontsize=fontsize)
+    plot.savefig('plot_Pr_no_overflow_critical_boundary.png', bbox_inches='tight')
+    plot.gcf().clear()
+  
   def plot_w_varying_C_m(E):
     C_l, m_l, p_l = [], [], []
     p_critical = 0.99
@@ -300,7 +325,7 @@ def plot_Pr_no_overflow():
     ax.set_ylim(ymin=0)
     ax.set_zlabel(r'Pr{$\Sigma$-robust}', fontsize=fontsize)
     ax.set_zlim(zmin=0, zmax=1)
-    plot.title(r'$\Sigma= {}$'.format(E), fontsize=fontsize)
+    # plot.title(r'$\Sigma= {}$'.format(E), fontsize=fontsize)
     ax.view_init(30, -105)
     plot.savefig('plot_Pr_no_overflow_w_varying_C_m.png', bbox_inches='tight')
     fig.clear()
@@ -325,7 +350,8 @@ def plot_Pr_no_overflow():
     #   ax.view_init(30, angle)
     #   plot.draw()
     #   plot.pause(.001)
-  plot_w_varying_C_m(E=100)
+  # plot_w_varying_C_m(E=100)
+  plot_critical_boundary(E=100)
   log(INFO, "done.")
 
 def k_from_max_group_size(max_gs):
@@ -491,7 +517,7 @@ if __name__ == "__main__":
     exp(n, m, b)
   '''
   
-  # plot_Pr_no_overflow()
+  plot_Pr_no_overflow()
   # compare_varying_groupsize(max_gs=7)
-  plot_Pr_no_overflow_wchoice()
+  # plot_Pr_no_overflow_wchoice()
   # plot_if_resource_reduction_possible_wchoice(max_gs=7)

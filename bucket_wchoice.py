@@ -14,6 +14,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from bucket_model import *
 from plot_polygon import *
+from bucket_utils import *
 
 class BucketConfInspector(object):
   def __init__(self, m, C, obj__bucket_l_m):
@@ -22,7 +23,7 @@ class BucketConfInspector(object):
     self.obj__bucket_l_m = obj__bucket_l_m
     
     self.k = len(obj__bucket_l_m)
-    self.l = sum([len(obj__bucket_l_m[obj] ) for obj in range(self.k) ] )
+    self.l = sum(len(obj__bucket_l_m[obj] ) for obj in range(self.k) )
     ## T
     self.T = np.zeros((self.k, self.l))
     i = 0
@@ -59,11 +60,26 @@ class BucketConfInspector(object):
     # blog(x_val=x.value)
     return prob.status == 'optimal'
   
+  def min_bucketcap_forstability(self, ar_l):
+    x = cvxpy.Variable(shape=(self.l, 1), name='x')
+    
+    obj = cvxpy.Minimize(cvxpy.norm(self.M*x, "inf") )
+    constraints = [x >= 0, self.T*x == np.array(ar_l).reshape((self.k, 1)) ]
+    prob = cvxpy.Problem(obj, constraints)
+    try:
+      prob.solve()
+    except cvxpy.SolverError:
+      prob.solve(solver='SCS')
+    
+    min_bucketcap = prob.value
+    # log(INFO, "", min_bucketcap=min_bucketcap)
+    return min_bucketcap
+  
   def is_stable_w_naivesplit(self, ar_l):
     '''
      Rather than searching through all distribution vector x's, we restrict ourselves here on
      the naive splitting of demand for object-i uniformly across all its buckets.
-    Result: Naive split cannot capture the benefit of multiple choice;
+     Result: Naive split cannot capture the benefit of multiple choice;
      Pr{robustness} with naive split is much lower than actual.
     '''
     x = np.zeros((self.l, 1) ) # self.l*[0]
@@ -79,16 +95,28 @@ class BucketConfInspector(object):
   
   def sim_frac_stable(self, cum_demand, nsamples=10**3, w_naivesplit=False):
     nstable = 0
-    for i in range(nsamples):
-      rand_l = sorted(np.random.uniform(size=(self.k-1, 1) ) )
-      ar_l = np.array([rand_l[0]] + \
-        [rand_l[i+1] - rand_l[i] for i in range(len(rand_l)-1) ] + \
-        [1 - rand_l[-1]] ) * cum_demand
+    ar_l_l = get_uspacings_l(self.k, cum_demand, nsamples)
+    for ar_l in ar_l_l:
       stable = self.is_stable(ar_l) # if not w_naivesplit else self.is_stable_w_naivesplit(ar_l)
       # blog(ar_l=ar_l, stable=stable)
-      
       nstable += int(stable)
     return nstable/nsamples
+  
+  def sim_min_bucketcap_forstability(self, cum_demand, nsamples):
+    ar_l_l = get_uspacings_l(self.k, cum_demand, nsamples)
+    
+    # min_cap = 0 # float('inf')
+    min_cap_l = []
+    for ar_l in ar_l_l:
+      # log(INFO, "sum(ar_l)= {}".format(sum(ar_l) ) )
+      # min_cap = max(self.min_bucketcap_forstability(ar_l), min_cap)
+      min_cap_l.append(self.min_bucketcap_forstability(ar_l) )
+    # print("min_cap_l= {}".format(sorted(min_cap_l) ) )
+    return np.mean(min_cap_l)
+    # l = len(min_cap_l)
+    # return np.median(sorted(min_cap_l)[int(0.4*l):int(0.6*l)] )
+    # return np.mean(sorted(min_cap_l)[:-int(0.1*len(min_cap_l) ) ] )
+    # return min_cap
   
   def frac_stable(self, E):
     # np.set_printoptions(threshold=np.nan)
@@ -132,7 +160,7 @@ class BucketConfInspector(object):
   
   def plot_cap(self, d):
     if self.k != 3:
-      log(ERROR, "implemented only for m= 3;", m=self.m)
+      log(ERROR, "implemented only for k= 3;", k=self.k)
       return
     np.set_printoptions(threshold=np.nan)
     
@@ -191,32 +219,114 @@ class BucketConfInspector(object):
       ax.add_collection3d(f)
     
     plot.legend()
-    fontsize = 18
-    ax.set_xlabel(r'$\lambda_a$', fontsize=fontsize)
+    fontsize = 22
+    ax.set_xlabel(r'$\rho_a$', fontsize=fontsize)
     ax.set_xlim(xmin=0)
-    ax.set_ylabel(r'$\lambda_b$', fontsize=fontsize)
+    ax.set_ylabel(r'$\rho_b$', fontsize=fontsize)
     ax.set_ylim(ymin=0)
-    ax.set_zlabel(r'$\lambda_c$', fontsize=fontsize)
+    ax.set_zlabel(r'$\rho_c$', fontsize=fontsize)
     ax.set_zlim(zmin=0)
-    plot.title(r'$k= {}$, $m= {}$, $C= {}$, $d= {}$'.format(self.k, self.m, self.C, d) + '\n Volume= {0:.2f}'.format(hull.volume), fontsize=fontsize)
+    # plot.title(r'$k= {}$, $n= {}$, $d= {}$'.format(self.k, self.m, d) + '\n Volume= {0:.2f}'.format(hull.volume), fontsize=fontsize)
+    plot.title(r'$k= {}$, $n= {}$, $d= {}$'.format(self.k, self.m, d), fontsize=fontsize)
     ax.view_init(20, 30)
-    plot.savefig('plot_cap_C{}_d{}.png'.format(self.C, d), bbox_inches='tight')
+    plot.savefig('plot_cap_d{}.pdf'.format(d), bbox_inches='tight')
     fig.clear()
     # '''
     log(INFO, "done.")
 
-def BucketConfInspector_regularbalanced(k, m, C, choice):
+def BucketConfInspector_clustering(k, n, C, d):
+  if n % d:
+    log(ERROR, "d (# of choices) should | n")
+    return None
+  
   obj__bucket_l_m = {obj: [] for obj in range(k) }
   for obj, bucket_l in obj__bucket_l_m.items():
-    bucket = obj % m
-    bucket_l.extend([(bucket+i) % m for i in range(choice) ] )
-  return BucketConfInspector(m, C, obj__bucket_l_m)
+    bucket = obj %  n
+    cluster_i = bucket // d
+    bucket_l.extend([i % n for i in range(cluster_i*d, (cluster_i+1)*d ) ] )
+  return BucketConfInspector(n, C, obj__bucket_l_m)
+
+def BucketConfInspector_roundrobin(k, n, C, d):
+  obj__bucket_l_m = {obj: [] for obj in range(k) }
+  for obj, bucket_l in obj__bucket_l_m.items():
+    bucket = obj % n
+    bucket_l.extend([(bucket+i) % n for i in range(d) ] )
+  return BucketConfInspector(n, C, obj__bucket_l_m)
+
+def check_cond_for_stability(k, n, d, spacing_len, maxspacing_threshold, suff=True):
+  C = 1
+  bci = BucketConfInspector_roundrobin(k, n, C, d)
+  nsamples = 10000
+  
+  def is_maxdspacing_leq_x(l, d, x):
+    for i in range(len(l)-d+1):
+      if sum(l[i:i+d] ) > x:
+        return False
+    return True
+  
+  # def is_maxdspacing_g_x(l, d, x):
+  #   for i in range(len(l)-d+1):
+  #     if sum(l[i:i+d] ) < x:
+  #       return False
+  #   return True
+  
+  ntrials, nstable = 0, 0
+  ro_l_l = [
+    *get_uspacings_l(k, 0.2*n, nsamples),
+    *get_uspacings_l(k, 0.5*n, nsamples),
+    *get_uspacings_l(k, 0.8*n, nsamples) ]
+  for ro_l in ro_l_l:
+    if suff and not is_maxdspacing_leq_x(ro_l, spacing_len, maxspacing_threshold):
+      continue
+    elif not suff and is_maxdspacing_leq_x(ro_l, spacing_len, maxspacing_threshold):
+      continue
+    ntrials += 1
+    stable = bci.is_stable(ro_l)
+    nstable += int(stable)
+  log(INFO, "", nstable=nstable, ntrials=ntrials)
+  return nstable/ntrials
+
+def cum_overlap_between_pairs_of_choices(bucket_conf_inspector):
+  obj__choice_s_m = {o: {*b_l} for o, b_l in bucket_conf_inspector.obj__bucket_l_m.items() }
+  # log(INFO, "", obj__choice_s_m=obj__choice_s_m)
+  
+  d = None
+  cum_overlap = 0
+  for o1, cs1 in obj__choice_s_m.items():
+    if d is None:
+      d = len(cs1)
+    for o2, cs2 in obj__choice_s_m.items():
+      if o2 == o1:
+        continue
+      # intersection = cs1 & cs2
+      # print("intersection= {}".format(intersection) )
+      cum_overlap += len(cs1 & cs2)
+  
+  cum_overlap_by_exp = (d-1)*d*bucket_conf_inspector.k
+  log(INFO, "", cum_overlap=cum_overlap, cum_overlap_by_exp=cum_overlap_by_exp)
 
 if __name__ == "__main__":
   # blog(np_version=np.__version__)
   
-  k, m, C = 3, 3, 5
-  d = 3 # 1 # 2
-  bci = BucketConfInspector_regularbalanced(k, m, C, d)
-  bci.plot_cap(d)
+  # k, n, C = 3, 3, 1
+  # # for d in [1, 2, 3]:
+  # d = 3
+  # bci = BucketConfInspector_roundrobin(k, n, C, d)
+  # bci.plot_cap(d)
+  
+  # k, n, C = 6, 6, 5
+  # d = 3 # 1 # 2
+  # bci = BucketConfInspector_clustering(k, n, C, d)
+  # print("obj__bucket_l_m= \n{}".format(bci.obj__bucket_l_m) )
+  
+  k, n, d = 100, 100, 5
+  # freq_stable = check_cond_for_stability(k, n, d, spacing_len=d, maxspacing_threshold=d)
+  # log(INFO, "For suff cond Md \leq d, we expect freq_stable = 1;", k=k, n=n, d=d, freq_stable=freq_stable)
+  
+  # freq_stable = check_cond_for_stability(k, n, d, spacing_len=d, maxspacing_threshold=2*d, suff=False)
+  # log(INFO, "For necc cond Md \leq 2d, we expect freq_stable = 0;", k=k, n=n, d=d, freq_stable=freq_stable)
+  
+  C = 1
+  bci = BucketConfInspector_roundrobin(k, n, C, d)
+  cum_overlap_between_pairs_of_choices(bci)
   

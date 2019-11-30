@@ -14,9 +14,10 @@ NICE_ORANGE = '#ffcc99'
 
 nice_color_c = itertools.cycle((NICE_BLUE, NICE_RED, NICE_ORANGE, NICE_GREEN))
 dark_color_c = itertools.cycle(('green', 'purple', 'blue', 'magenta', 'purple', 'gray', 'brown', 'turquoise', 'gold', 'olive', 'silver', 'rosybrown', 'plum', 'goldenrod', 'lightsteelblue', 'lightpink', 'orange', 'darkgray', 'orangered'))
+# dark_color_c = itertools.cycle(('magenta', 'purple', 'gray', 'brown', 'turquoise', 'gold', 'olive', 'silver', 'rosybrown', 'plum', 'goldenrod', 'lightsteelblue', 'lightpink', 'orange', 'darkgray', 'orangered'))
 light_color_c = itertools.cycle(('silver', 'rosybrown', 'plum', 'lightsteelblue', 'lightpink', 'orange', 'turquoise'))
 linestyle_c = itertools.cycle(('-', '--', ':', '-.') )
-marker_c = itertools.cycle(('o', 'v', '^', 'p', 'd', '<', '>', 'x', '+', '1' , '2', '3', '4') )
+marker_c = itertools.cycle(('o', 'v', '^', 'p', 'd', '<', '>', 'h', 'H', '*', 's', '1' , '2', '3', '4') )
 skinny_marker_l = ['x', '+', '1', '2', '3', '4']
 
 mew, ms = 1, 2 # 3, 5

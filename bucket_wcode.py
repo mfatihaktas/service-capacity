@@ -7,6 +7,7 @@ import mpl_toolkits.mplot3d
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from bucket_utils import *
 from bucket_model import *
 from plot_polygon import *
 
@@ -22,9 +23,20 @@ class BucketConfInspector_wCode(object):
     self.k = G.shape[0]
     self.n = G.shape[1]
     
+    ## repgroup's are given in terms of obj ids, in the sense of columns of G or keys of obj_bucket_m
     self.sys__repgroup_l_l = self.get_sys__repgroup_l_l()
     blog(sys__repgroup_l_l=self.sys__repgroup_l_l)
     
+    print('sys-repgroup_l, in terms of node ids:')
+    for sys, repgroup_l in enumerate(self.sys__repgroup_l_l):
+      str_ = "["
+      for rg in repgroup_l:
+        rg_str = '({})'.format(','.join(['{}'.format(obj_bucket_m[obj_id] ) for obj_id in rg] ) )
+        str_ += rg_str + ', '
+      str_ += ']'
+      print('sys= {}, {}'.format(sys, str_) )
+    
+    # '''
     ## T
     _rg_l = []
     for srg_l in self.sys__repgroup_l_l:
@@ -50,10 +62,11 @@ class BucketConfInspector_wCode(object):
     halfspaces[:self.m, :-1] = self.M
     for r in range(self.m, self.m+self.l):
       halfspaces[r, r-self.m] = -1
-    log(INFO, "halfspaces= \n{}".format(halfspaces) )
+    # log(INFO, "halfspaces= \n{}".format(halfspaces) )
     
     feasible_point = np.array([self.C/self.l]*self.l)
     self.hs = HalfspaceIntersection(halfspaces, feasible_point)
+    # '''
   
   def __repr__(self):
     return 'BucketConfInspector_wCode[m= {}, C= {}, \nG=\n {}, \nobj_bucket_m= {}, \nM=\n{}, \nT=\n{}]'.format(self.m, self.C, self.G, self.obj_bucket_m, self.M, self.T)
@@ -83,9 +96,9 @@ class BucketConfInspector_wCode(object):
       # y = self.G[:, s].reshape((self.k, 1))
       y = np.array([0]*s + [1] + [0]*(self.k-s-1) ).reshape((self.k, 1))
       repgroup_l = []
-      for repair_size in range(1, self.k+1):
+      for repair_size in [1, 2]: # range(1, self.k+1):
         for subset in itertools.combinations(range(self.n), repair_size):
-          # Check if subset contains any previously registered smaller repair group
+          ## Check if subset contains any previously registered smaller repair group
           skip = False
           for rg in repgroup_l:
             if does_right_contain_left(rg, subset):
@@ -106,15 +119,42 @@ class BucketConfInspector_wCode(object):
     # blog(sys__repgroup_l_l=sys__repgroup_l_l)
     return sys__repgroup_l_l
   
-  def plot_cap(self):
+  def min_bucketcap_forstability(self, ar_l):
+    x = cvxpy.Variable(shape=(self.l, 1), name='x')
+    
+    obj = cvxpy.Minimize(cvxpy.norm(self.M*x, "inf") )
+    constraints = [x >= 0, self.T*x == np.array(ar_l).reshape((self.k, 1)) ]
+    prob = cvxpy.Problem(obj, constraints)
+    try:
+      prob.solve()
+    except cvxpy.SolverError:
+      prob.solve(solver='SCS')
+    
+    min_bucketcap = prob.value
+    # log(INFO, "", min_bucketcap=min_bucketcap)
+    return min_bucketcap
+  
+  def sim_min_bucketcap_forstability(self, cum_demand, nsamples):
+    ar_l_l = get_uspacings_l(self.k, cum_demand, nsamples)
+    
+    # min_cap = 0 # float('inf')
+    min_cap_l = []
+    for ar_l in ar_l_l:
+      # log(INFO, "sum(ar_l)= {}".format(sum(ar_l) ) )
+      # min_cap = max(self.min_bucketcap_forstability(ar_l), min_cap)
+      min_cap_l.append(self.min_bucketcap_forstability(ar_l) )
+    # print("min_cap_l= {}".format(sorted(min_cap_l) ) )
+    return np.mean(min_cap_l)
+  
+  def plot_cap(self, d):
     if self.k == 2:
-      self.plot_cap_2d()
+      self.plot_cap_2d(d)
     elif self.k == 3:
-      self.plot_cap_3d()
+      self.plot_cap_3d(d)
     else:
       log(ERROR, "not implemented for k= {}".format(self.k) )
   
-  def plot_cap_2d(self):
+  def plot_cap_2d(self, d):
     # print("hs.intersections= \n{}".format(self.hs.intersections) )
     x_l, y_l = [], []
     for x in self.hs.intersections:
@@ -130,17 +170,17 @@ class BucketConfInspector_wCode(object):
     
     plot.legend()
     fontsize = 18
-    plot.xlabel(r'$\lambda_a$', fontsize=fontsize)
+    plot.xlabel(r'$\rho_a$', fontsize=fontsize)
     plot.xlim(xmin=0)
-    plot.ylabel(r'$\lambda_b$', fontsize=fontsize)
+    plot.ylabel(r'$\rho_b$', fontsize=fontsize)
     plot.ylim(ymin=0)
-    plot.title(r'$k= {}$, $m= {}$, $C= {}$'.format(self.k, self.m, self.C) + ', Volume= {0:.2f}'.format(hull.volume) \
+    plot.title(r'$k= {}$, $m= {}$, $C= {}$, $d= {}$'.format(self.k, self.m, self.C, d) + ', Volume= {0:.2f}'.format(hull.volume) \
       + '\n{}'.format(self.to_sysrepr() ), fontsize=fontsize, y=1.05)
     plot.savefig('plot_cap_2d.png', bbox_inches='tight')
     plot.gcf().clear()
     log(INFO, "done.")
   
-  def plot_cap_3d(self):
+  def plot_cap_3d(self, d):
     ax = plot.axes(projection='3d')
     
     x_l, y_l, z_l = [], [], []
@@ -177,15 +217,17 @@ class BucketConfInspector_wCode(object):
     
     plot.legend()
     fontsize = 18
-    ax.set_xlabel(r'$\lambda_a$', fontsize=fontsize)
+    ax.set_xlabel(r'$\rho_a$', fontsize=fontsize)
     ax.set_xlim(xmin=0)
-    ax.set_ylabel(r'$\lambda_b$', fontsize=fontsize)
+    ax.set_ylabel(r'$\rho_b$', fontsize=fontsize)
     ax.set_ylim(ymin=0)
-    ax.set_zlabel(r'$\lambda_c$', fontsize=fontsize)
+    ax.set_zlabel(r'$\rho_c$', fontsize=fontsize)
     ax.set_zlim(zmin=0)
     ax.view_init(20, 30)
-    plot.title(r'$k= {}$, $m= {}$, $C= {}$'.format(self.k, self.m, self.C) + ', Volume= {0:.2f}'.format(hull.volume) \
-      + '\n{}'.format(self.to_sysrepr() ), fontsize=fontsize, y=1.05)
+    # plot.title(r'$k= {}$, $m= {}$, $C= {}$, $d= {}$'.format(self.k, self.m, self.C, d) + ', Volume= {0:.2f}'.format(hull.volume) \
+    #   + '\n{}'.format(self.to_sysrepr() ), fontsize=fontsize, y=1.05)
+    plot.title(r'$k= {}$, $n= {}$, $d= {}$'.format(self.k, self.m, d), fontsize=fontsize)
+    plot.gcf().set_size_inches(7, 5)
     plot.savefig('plot_cap_3d_{}.png'.format(self.to_sysrepr() ), bbox_inches='tight')
     plot.gcf().clear()
     log(INFO, "done.")
@@ -213,30 +255,87 @@ def example(k):
     bucket__objdesc_l_l = \
      [[((0, 1),), ((1, 1),) ],
       [((0, 1), (1, 1)), ((0, 1), (1, 2)) ] ]
+    
+    ## Example with Caroline
+    d = 2
+    bucket__objdesc_l_l = \
+      [[((0, 1),) ],
+       [((0, 1),) ],
+       [((0, 1),) ],
+       [((0, 1),) ],
+       [((0, 1),) ],
+       [((1, 1),) ],
+       [((1, 1),) ],
+       [((1, 1),) ],
+       [((1, 1),) ],
+       [((0, 1), (1, 1)) ],
+       [((0, 1), (1, 2)) ] ]
   elif k == 3:
-    ## 2-choice
-    # bucket__objdesc_l_l = \
-    # [[((0, 1),), ((2, 1),) ],
-    #   [((1, 1),), ((0, 1),) ],
-    #   [((2, 1),), ((1, 1),) ] ]
+    d = 2
+    # if d == 1:
+    #   bucket__objdesc_l_l = \
+    #   [[((0, 1),)],
+    #     [((1, 1),)],
+    #     [((2, 1),)] ]
+    # elif d == 2:
+    #   bucket__objdesc_l_l = \
+    #   [[((0, 1),), ((2, 1),) ],
+    #     [((1, 1),), ((0, 1),) ],
+    #     [((2, 1),), ((1, 1),) ] ]
+    # elif d == 3:
+    #   bucket__objdesc_l_l = \
+    #   [[((0, 1),), ((2, 1),), ((1, 1),) ],
+    #     [((1, 1),), ((0, 1),), ((2, 1),) ],
+    #     [((2, 1),), ((1, 1),), ((0, 1),) ] ]
     ## Balanced coding
+    # bucket__objdesc_l_l = \
+    #   [[((0, 1),), ((1, 1), (2, 1)) ],
+    #     [((1, 1),), ((0, 1), (2, 1)) ],
+    #     [((2, 1),), ((0, 1), (1, 1)) ] ]
+    ## Unbalanced coding
+    # bucket__objdesc_l_l = \
+    # [[((0, 1),), ((1, 1),) ],
+    #   [((2, 1),), ((0, 1), (1, 1)) ],
+    #   [((1, 1), (2, 1)), ((0, 1), (2, 1)) ] ]
+    ## Simplex over 4 nodes
+    # bucket__objdesc_l_l = \
+    # [[((0, 1),), ((1, 1),) ],
+    #   [((2, 1),), ((0, 1), (1, 1)) ],
+    #   [((1, 1), (2, 1)), ((0, 1), (2, 1)) ],
+    #   [((0, 1), (1, 1), (2, 1)) ] ]
     # bucket__objdesc_l_l = \
     # [[((0, 1),), ((1, 1), (2, 1)) ],
     #   [((1, 1),), ((0, 1), (2, 1)) ],
-    #   [((2, 1),), ((0, 1), (1, 1)) ] ]
-    ## Unbalanced coding
-    bucket__objdesc_l_l = \
-     [[((0, 1),), ((1, 1),) ],
-      [((2, 1),), ((0, 1), (1, 1)) ],
-      [((1, 1), (2, 1)), ((0, 1), (2, 1)) ] ]
+    #   [((2, 1),), ((0, 1), (1, 1)) ],
+    #   [((0, 1), (1, 1), (2, 1)) ] ]
+  
   m, G, obj_bucket_m = get_m_G__obj_bucket_m(k, bucket__objdesc_l_l)
   log(INFO, "", m=m, G=G, obj_bucket_m=obj_bucket_m)
   C = 1
   cf = BucketConfInspector_wCode(m, C, G, obj_bucket_m)
   blog(cf=cf, to_sysrepr=cf.to_sysrepr() )
   
-  cf.plot_cap()
+  cf.plot_cap(d)
+
+def checking_plausible_regular_balanced_dchoice_wxors():
+  k = 8
+  bucket__objdesc_l_l = \
+    [[((0, 1),), ((6, 1), (7, 1)) ],
+     [((1, 1),), ((3, 1), (7, 1)) ],
+     [((2, 1),), ((0, 1), (1, 1)) ],
+     [((3, 1),), ((0, 1), (5, 1)) ],
+     [((4, 1),), ((2, 1), (3, 1)) ],
+     [((5, 1),), ((2, 1), (6, 1)) ],
+     [((6, 1),), ((4, 1), (5, 1)) ],
+     [((7, 1),), ((1, 1), (4, 1)) ] ]
+  m, G, obj_bucket_m = get_m_G__obj_bucket_m(k, bucket__objdesc_l_l)
+  log(INFO, "G=\n{}".format(pprint.pformat(list(G) ) ), m=m, obj_bucket_m=obj_bucket_m)
+  C = 1
+  cf = BucketConfInspector_wCode(m, C, G, obj_bucket_m)
+  # blog(cf=cf, to_sysrepr=cf.to_sysrepr() )
 
 if __name__ == "__main__":
-  example(k=3)
+  example(k=2)
+  
+  # checking_plausible_regular_balanced_dchoice_wxors()
   
