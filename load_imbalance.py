@@ -126,6 +126,7 @@ def compare_I_clustering_vs_rr():
   plot_(n=1000, d_l=[1, 2, 5, 10, 20], t='rr')
   
   fontsize = 20
+  plot.xlim(right=21)
   plot.legend(loc='best', framealpha=0.5, fontsize=12)
   prettify(plot.gca() )
   plot.xlabel(r'$d$', fontsize=fontsize)
@@ -137,10 +138,8 @@ def compare_I_clustering_vs_rr():
 
 def compare_I_rr_vs_bibd():
   C = 1
-  def plot_(d):
-    log(INFO, "started; d= {}".format(d) )
-    n = k = d**2 - d + 1
-    bci_rr = BucketConfInspector_roundrobin(k, n, C, d)
+  
+  def bd_bci(d):
     if d == 3:
       obj__bucket_l_m = {
         0: [0, 1, 2],
@@ -151,7 +150,36 @@ def compare_I_rr_vs_bibd():
         5: [1, 3, 6],
         6: [1, 4, 5] }
     elif d == 4:
-      
+      # https://rdrr.io/cran/ibd/man/bibd.html
+      # bibd(v=13, b=13, r=4, k=4, lambda=1)
+      #           [,1] [,2] [,3] [,4]
+      # Block-1     1    2    5    7
+      # Block-2     3    4    6    7
+      # Block-3     3    5   10   11
+      # Block-4     7    9   11   12
+      # Block-5     7    8   10   13
+      # Block-6     1    6    9   10
+      # Block-7     4    5    8    9
+      # Block-8     5    6   12   13
+      # Block-9     2    4   10   12
+      # Block-10    1    4   11   13
+      # Block-11    2    3    9   13
+      # Block-12    1    3    8   12
+      # Block-13    2    6    8   11
+      obj__bucket_l_m = {
+        0: [0, 1, 4, 6],
+        1: [2, 3, 5, 6],
+        2: [2, 4, 9, 10],
+        3: [6, 8, 10, 11],
+        4: [6, 7, 9, 12],
+        5: [0, 5, 8, 9],
+        6: [3, 4, 7, 8],
+        7: [4, 5, 11, 12],
+        8: [1, 3, 9, 11],
+        9: [0, 3, 10, 12],
+        10: [1, 2, 8, 12],
+        11: [0, 2, 7, 11],
+        12: [1, 5, 7, 10] }
     elif d == 5:
       # https://rdrr.io/cran/ibd/man/bibd.html
       # bibd(v=21, b=21, r=5, k=5, lambda=1)
@@ -199,69 +227,114 @@ def compare_I_rr_vs_bibd():
         18: [1, 4, 10, 17, 19],
         19: [1, 3, 7, 13, 14],
         20: [0, 1, 11, 15, 18] }
+    elif d == 6:
+      # bibd(v=31, b=31, r=6, k=6, lambda=1)
+      #           [,1] [,2] [,3] [,4] [,5] [,6]
+      # Block-1     2    3    5    6    9   17
+      # Block-2     3    7   10   16   22   25
+      # Block-3     3    8   11   21   30   31
+      # Block-4     4    6   11   25   27   29
+      # Block-5     4   14   17   20   21   22
+      # Block-6     1   10   15   17   29   31
+      # Block-7     6    8   10   20   23   24
+      # Block-8     4    5    7    8   15   19
+      # Block-9     5   10   11   12   14   18
+      # Block-10    5   16   21   23   26   29
+      # Block-11   17   18   19   23   25   30
+      # Block-12    1    5   22   24   27   30
+      # Block-13    5   13   20   25   28   31
+      # Block-14    2   12   15   21   24   25
+      # Block-15    2    7   14   23   27   31
+      # Block-16    9   11   13   15   22   23
+      # Block-17    9   10   19   21   27   28
+      # Block-18    1    8    9   14   25   26
+      # Block-19    8   12   13   16   17   27
+      # Block-20    1    6    7   13   18   21
+      # Block-21    7   11   17   24   26   28
+      # Block-22    6   12   19   22   26   31
+      # Block-23    4    9   16   18   24   31
+      # Block-24    3   13   14   19   24   29
+      # Block-25    1    3    4   12   23   28
+      # Block-26    7    9   12   20   29   30
+      # Block-27    6   14   15   16   28   30
+      # Block-28    2    8   18   22   28   29
+      # Block-29    2    4   10   13   26   30
+      # Block-30    1    2   11   16   19   20
+      # Block-31    3   15   18   20   26   27
+      obj__bucket_l_m = {
+        0: [1, 2, 4, 5, 8, 16],
+        1: [2, 6, 9, 15, 21, 24],
+        2: [2, 7, 10, 20, 29, 30],
+        3: [3, 5, 10, 24, 26, 28],
+        4: [3, 13, 16, 19, 20, 21],
+        5: [0, 9, 14, 16, 28, 30],
+        6: [5, 7, 9, 19, 22, 23],
+        7: [3, 4, 6, 7, 14, 18],
+        8: [4, 9, 10, 11, 13, 17],
+        9: [4, 15, 20, 22, 25, 28],
+        10: [16, 17, 18, 22, 24, 29],
+        11: [0, 4, 21, 23, 26, 29],
+        12: [4, 12, 19, 24, 27, 30],
+        13: [1, 11, 14, 20, 23, 24],
+        14: [1, 6, 13, 22, 26, 30],
+        15: [8, 10, 12, 14, 21, 22],
+        16: [8, 9, 18, 20, 26, 27],
+        17: [0, 7, 8, 13, 24, 25],
+        18: [7, 11, 12, 15, 16, 26],
+        19: [0, 5, 6, 12, 17, 20],
+        20: [6, 10, 16, 23, 25, 27],
+        21: [5, 11, 18, 21, 25, 30],
+        22: [3, 8, 15, 17, 23, 30],
+        23: [2, 12, 13, 18, 23, 28],
+        24: [0, 2, 3, 11, 22, 27],
+        25: [6, 8, 11, 19, 28, 29],
+        26: [5, 13, 14, 15, 27, 29],
+        27: [1, 7, 17, 21, 27, 28],
+        28: [1, 3, 9, 12, 25, 29],
+        29: [0, 1, 10, 15, 18, 19],
+        30: [2, 14, 17, 19, 25, 26] }
     else:
       log(ERROR, "not implemented for d= {}".format(d) )
-      return
-    bci_bibd = BucketConfInspector(n, C, obj__bucket_l_m)
+      return None
+    n = d**2 - d + 1
+    return BucketConfInspector(n, C, obj__bucket_l_m)
+  
+  def plot_(d_l, t):
+    log(INFO, ">> d_l= {}, t= {}".format(d_l, t) )
     
-    nsamples = 10**5 # 10**6
-    E_l, I_rr_l, I_bibd_l = [], [], []
-    for E in np.linspace(C, n*C, 7):
-      print(">> E= {}".format(E) )
-      E_l.append(E)
-      
-      I_rr = bci_rr.sim_min_bucketcap_forstability(E, nsamples)/(E/n)
-      blog(I_rr=I_rr)
-      I_rr_l.append(I_rr)
-      
-      
-      I_bibd = bci_bibd.sim_min_bucketcap_forstability(E, nsamples)/(E/n)
-      blog(I_bibd=I_bibd)
-      I_bibd_l.append(I_bibd)
-      
-      # if I_rr < 0.01 or I_bibd < 0.01:
-      #   break
-    plot.plot(E_l, I_rr_l, label='Cyclic, $n= {}$, $d= {}$'.format(n, d), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0.5, ms=7)
-    plot.plot(E_l, I_bibd_l, label='Block design, $n= {}$, $d= {}$'.format(n, d), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0.5, ms=7)
-  
-  plot_(d=3)
-  plot_(d=5)
-  
-  
-  def plot_(n, d_l, t):
-    log(INFO, ">> n= {}, d_l= {}, t= {}".format(n, d_l, t) )
-    k = n
-    E = n*C*0.8
-    
-    nsamples = 10**4 # 10**5
+    nsamples = 10**4
     I_l = []
     for d in d_l:
-      if t == 'cl':
-        bci = BucketConfInspector_clustering(k, n, C, d)
-        name = "Clustering"
-      elif t == 'rr':
+      n = d**2 - d + 1
+      k = n
+      E = n*C*0.8
+      if t == 'rr':
         bci = BucketConfInspector_roundrobin(k, n, C, d)
         name = "Cyclic"
+      elif t == 'bd':
+        bci = bd_bci(d)
+        name = "Block design"
       else:
         log(ERROR, "Unknown t= {}".format(t) )
         return
-      
+      # blog(bci=bci)
       I = bci.sim_min_bucketcap_forstability(E, nsamples)/(E/n)
-      blog(I=I)
+      # log(INFO, "E/n= {}".format(E/n), I=I)
       I_l.append(I)
-    plot.plot(d_l, I_l, label='{}, $n= {}$'.format(name, n), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0.5, ms=7)
+    plot.plot(d_l, I_l, label=name, c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0.5, ms=7)
   
-  plot_(n=9, d_l=[1, 3], t='cl')
-  plot_(n=9, d_l=[1, 2, 3, 4], t='rr')
-  
-  plot_(n=20, d_l=[1, 2, 4, 5], t='cl')
-  plot_(n=20, d_l=[1, 2, 3, 4, 5], t='rr')
+  # plot_(d_l=[3], t='rr')
+  # plot_(d_l=[3], t='bd')
+  plot_(d_l=[3, 4, 5, 6], t='rr')
+  plot_(d_l=[3, 4, 5, 6], t='bd')
   
   fontsize = 20
   plot.legend(loc='best', framealpha=0.5, fontsize=12)
   prettify(plot.gca() )
   plot.xlabel(r'$d$', fontsize=fontsize)
   plot.ylabel(r'$I$', fontsize=fontsize)
+  plot.title(r'$n = d^2 - d + 1$', fontsize=fontsize)
+  plot.xlim(right=7)
   plot.gcf().set_size_inches(5, 5)
   plot.savefig('compare_I_rr_vs_bibd.pdf', bbox_inches='tight')
   plot.gcf().clear()
@@ -334,7 +407,7 @@ def compare_I_rr_vs_rXORs():
 
 if __name__ == "__main__":
   # I_wm()
-  I_wd()
+  # I_wd()
   # compare_I_clustering_vs_rr()
-  # compare_I_rr_vs_bibd()
+  compare_I_rr_vs_bibd()
   # compare_I_rr_vs_rXORs()

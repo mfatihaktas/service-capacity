@@ -41,6 +41,12 @@ class BucketConfInspector(object):
         self.M[bucket, i] = 1
         i += 1
       obj += 1
+    
+    # obj_start_i = 0
+    # for obj, bucket_l in obj__bucket_l_m.items():
+    #   for i, bucket in enumerate(bucket_l):
+    #     self.M[bucket, obj_start_i] = 1
+    #     obj_start_i += 1
   
   def __repr__(self):
     return 'BucketConfInspector[m= {}, C= {}, \nobj__bucket_l_m= {}, \nM=\n{}, \nT=\n{}]'.format(self.m, self.C, self.obj__bucket_l_m, self.M, self.T)
@@ -63,7 +69,8 @@ class BucketConfInspector(object):
   def min_bucketcap_forstability(self, ar_l):
     x = cvxpy.Variable(shape=(self.l, 1), name='x')
     
-    obj = cvxpy.Minimize(cvxpy.norm(self.M*x, "inf") )
+    # obj = cvxpy.Minimize(cvxpy.norm(self.M*x, "inf") )
+    obj = cvxpy.Minimize(cvxpy.max(self.M*x) )
     constraints = [x >= 0, self.T*x == np.array(ar_l).reshape((self.k, 1)) ]
     prob = cvxpy.Problem(obj, constraints)
     try:
@@ -72,7 +79,7 @@ class BucketConfInspector(object):
       prob.solve(solver='SCS')
     
     min_bucketcap = prob.value
-    # log(INFO, "", min_bucketcap=min_bucketcap)
+    # log(INFO, "E/n= {}".format(np.mean(ar_l) ), min_bucketcap=min_bucketcap, x=x.value)
     return min_bucketcap
   
   def is_stable_w_naivesplit(self, ar_l):
@@ -111,7 +118,8 @@ class BucketConfInspector(object):
       # log(INFO, "sum(ar_l)= {}".format(sum(ar_l) ) )
       # min_cap = max(self.min_bucketcap_forstability(ar_l), min_cap)
       min_cap_l.append(self.min_bucketcap_forstability(ar_l) )
-    # print("min_cap_l= {}".format(sorted(min_cap_l) ) )
+    # log(INFO, "min_cap_l= {}".format(sorted(min_cap_l) ) )
+    # log(DEBUG, "", mean_min_cap=np.mean(min_cap_l), min_cap=cum_demand/self.k)
     return np.mean(min_cap_l)
     # l = len(min_cap_l)
     # return np.median(sorted(min_cap_l)[int(0.4*l):int(0.6*l)] )
