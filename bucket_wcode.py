@@ -96,7 +96,7 @@ class BucketConfInspector_wCode(object):
       # y = self.G[:, s].reshape((self.k, 1))
       y = np.array([0]*s + [1] + [0]*(self.k-s-1) ).reshape((self.k, 1))
       repgroup_l = []
-      for repair_size in [1, 2]: # range(1, self.k+1):
+      for repair_size in range(1, self.k+1): # [1, 2]:
         for subset in itertools.combinations(range(self.n), repair_size):
           ## Check if subset contains any previously registered smaller repair group
           skip = False
@@ -177,6 +177,56 @@ class BucketConfInspector_wCode(object):
     plot.title(r'$k= {}$, $m= {}$, $C= {}$, $d= {}$'.format(self.k, self.m, self.C, d) + ', Volume= {0:.2f}'.format(hull.volume) \
       + '\n{}'.format(self.to_sysrepr() ), fontsize=fontsize, y=1.05)
     plot.savefig('plot_cap_2d.png', bbox_inches='tight')
+    plot.gcf().clear()
+    log(INFO, "done.")
+  
+  def plot_cap_2d_when_k_g_2(self):
+    fontsize = 18
+    
+    xi_yi_l = list(itertools.combinations(range(self.k), 2) )
+    fig, axs = plot.subplots(len(xi_yi_l), 1, sharex='col')
+    figsize = [4, len(xi_yi_l)*4]
+    for i, (xi, yi) in enumerate(xi_yi_l):
+      print(">> i= {}, (xi, yi)= ({}, {})".format(i, xi, yi) )
+      x_l, y_l = [0], [0]
+      for _p in self.hs.intersections:
+        p = np.matmul(self.T, _p)
+        include = True
+        for j in range(self.k):
+          if j == xi or j == yi:
+            continue
+          if p[j] > 0.01:
+            include = False
+            break
+        if include:
+          x_l.append(p[xi] )
+          y_l.append(p[yi] )
+    
+      ax = axs[i]
+      plot.sca(ax)
+      
+      # print("x_l= {}".format(x_l) )
+      # print("y_l= {}".format(y_l) )
+      # print("Right before plotting red cross; i= {}".format(i) )
+      # plot.plot([1], [1], c='red', marker='x', ms=12)
+      # print("Right after plotting red cross; i= {}".format(i) )
+      # plot.plot(x_l, y_l, c=NICE_BLUE, marker='o', ls='None')
+      
+      points = np.column_stack((x_l, y_l))
+      # print("points= {}".format(points) )
+      hull = scipy.spatial.ConvexHull(points)
+      for simplex in hull.simplices:
+        simplex = np.append(simplex, simplex[0] ) # https://stackoverflow.com/questions/27270477/3d-convex-hull-from-point-cloud
+        plot.plot(points[simplex, 0], points[simplex, 1], c=NICE_BLUE, marker='o')
+      plot.xlim(xmin=0)
+      plot.ylim(ymin=0)
+      plot.xlabel('{}'.format(chr(ord('a') + xi) ), fontsize=fontsize)
+      plot.ylabel('{}'.format(chr(ord('a') + yi) ), fontsize=fontsize)
+      plot.title('i= {}'.format(i) )
+    plot.suptitle(r'$k= {}$, $n= {}$, $C= {}$'.format(self.k, self.m, self.C) \
+      + '\n{}'.format(self.to_sysrepr() ), fontsize=fontsize) # , y=1.05
+    fig.set_size_inches(figsize[0], figsize[1] )
+    plot.savefig('plot_cap_2d_when_k_g_2.png', bbox_inches='tight')
     plot.gcf().clear()
     log(INFO, "done.")
   
@@ -334,8 +384,26 @@ def checking_plausible_regular_balanced_dchoice_wxors():
   cf = BucketConfInspector_wCode(m, C, G, obj_bucket_m)
   # blog(cf=cf, to_sysrepr=cf.to_sysrepr() )
 
+def plot_capregion_reed_muller():
+  k = 4
+  bucket__objdesc_l_l = \
+    [[((3, 1),) ],
+     [((2, 1), (3, 1)) ],
+     [((1, 1), (3, 1)) ],
+     [((1, 1), (2, 1), (3, 1)) ],
+     [((0, 1), (3, 1)) ],
+     [((0, 1), (2, 1), (3, 1)) ],
+     [((0, 1), (1, 1), (3, 1)) ],
+     [((0, 1), (1, 1), (2, 1), (3, 1)) ] ]
+  n, G, obj_bucket_m = get_m_G__obj_bucket_m(k, bucket__objdesc_l_l)
+  log(INFO, "G=\n{}".format(pprint.pformat(list(G) ) ), n=n, obj_bucket_m=obj_bucket_m)
+  C = 1
+  bci = BucketConfInspector_wCode(n, C, G, obj_bucket_m)
+  bci.plot_cap_2d_when_k_g_2()
+  log(INFO, "done.")
+
 if __name__ == "__main__":
-  example(k=2)
+  # example(k=2)
   
   # checking_plausible_regular_balanced_dchoice_wxors()
-  
+  plot_capregion_reed_muller()

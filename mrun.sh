@@ -16,7 +16,7 @@ elif [ $1 = 'r' ]; then
 #SBATCH --ntasks=$NTASKS             # Total # of tasks across all nodes
 #SBATCH --cpus-per-task=1            # Cores per task (>1 if multithread tasks)
 #SBATCH --mem=4000                   # Real memory (RAM) required (MB)
-#SBATCH --time=3:00:00               # Total run time limit (HH:MM:SS)
+#SBATCH --time=12:00:00              # Total run time limit (HH:MM:SS)
 #SBATCH --export=ALL                 # Export your current env to the job env
 #SBATCH --output=log/slurm.%N.%j.out
 export MV2_ENABLE_AFFINITY=0
@@ -25,7 +25,7 @@ source /home/mfa51/service-capacity-virtualenv/bin/activate
 python3 $PWD/$FILE.py
   " > jscript.sh
   
-  # rm log/*
+  rm log/*
   sbatch jscript.sh
 elif [ $1 = 'l' ]; then
   squeue -u mfa51

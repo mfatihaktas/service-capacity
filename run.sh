@@ -3,7 +3,7 @@ echo $1 $2 $3
 
 PY=python3
 
-if [ $1 = 'init' ]; then
+if [ $1 = 'i' ]; then
   source /home/mfa51/service-capacity-virtualenv/bin/activate
 elif [ $1 = 'c' ]; then
   $PY cap_finder.py

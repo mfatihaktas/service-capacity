@@ -117,7 +117,9 @@ class BucketConfInspector(object):
     for ar_l in ar_l_l:
       # log(INFO, "sum(ar_l)= {}".format(sum(ar_l) ) )
       # min_cap = max(self.min_bucketcap_forstability(ar_l), min_cap)
-      min_cap_l.append(self.min_bucketcap_forstability(ar_l) )
+      min_cap = self.min_bucketcap_forstability(ar_l)
+      if min_cap is not None:
+        min_cap_l.append(min_cap)
     # log(INFO, "min_cap_l= {}".format(sorted(min_cap_l) ) )
     # log(DEBUG, "", mean_min_cap=np.mean(min_cap_l), min_cap=cum_demand/self.k)
     return np.mean(min_cap_l)
@@ -255,10 +257,14 @@ def BucketConfInspector_clustering(k, n, C, d):
   return BucketConfInspector(n, C, obj__bucket_l_m)
 
 def BucketConfInspector_roundrobin(k, n, C, d):
-  obj__bucket_l_m = {obj: [] for obj in range(k) }
-  for obj, bucket_l in obj__bucket_l_m.items():
-    bucket = obj % n
-    bucket_l.extend([(bucket+i) % n for i in range(d) ] )
+  # obj__bucket_l_m = {obj: [] for obj in range(k) }
+  # for obj, bucket_l in obj__bucket_l_m.items():
+  #   bucket = obj % n
+  #   bucket_l.extend([(bucket+i) % n for i in range(d) ] )
+  obj__bucket_l_m = {}
+  for obj in range(k):
+    primary_bucket = obj % n
+    obj__bucket_l_m[obj] = [(primary_bucket+i) % n for i in range(d) ]
   return BucketConfInspector(n, C, obj__bucket_l_m)
 
 def check_cond_for_stability(k, n, d, spacing_len, maxspacing_threshold, suff=True):
