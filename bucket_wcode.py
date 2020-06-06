@@ -96,7 +96,7 @@ class BucketConfInspector_wCode(object):
       # y = self.G[:, s].reshape((self.k, 1))
       y = np.array([0]*s + [1] + [0]*(self.k-s-1) ).reshape((self.k, 1))
       repgroup_l = []
-      for repair_size in range(1, self.k+1): # [1, 2]:
+      for repair_size in [1, 2, 3]: # range(1, self.k+1): # [1, 2]:
         for subset in itertools.combinations(range(self.n), repair_size):
           ## Check if subset contains any previously registered smaller repair group
           skip = False

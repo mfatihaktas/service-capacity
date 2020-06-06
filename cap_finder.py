@@ -83,7 +83,7 @@ class ConfInspector(object):
           # A = np.array(l).reshape((self.k, len(l) ))
           A = np.column_stack(l)
           # print("\n")
-          x, residuals, _, _ = np.linalg.lstsq(A, y)
+          x, residuals, _, _ = np.linalg.lstsq(A, y, rcond=-1)
           residuals = y - np.dot(A, x)
           # log(INFO, "", A=A, y=y, x=x, residuals=residuals)
           if np.sum(np.absolute(residuals) ) < 0.0001: # residuals.size > 0 and 
@@ -231,7 +231,7 @@ class ConfInspector(object):
     plot.savefig('plot_servcap_3d_n{}_k{}.png'.format(self.n, self.k), bbox_inches='tight')
     fig.clear()
   
-  def plot_servcap_2d(self, popmodel=None, savename=None, color=None, ls=None):
+  def plot_servcap_2d(self, popmodel=None, heatmap_grid_xmax_ymax=None, savename=None, color=None, ls=None):
     ## Service cap
     # '''
     c = NICE_BLUE if color is None else color
@@ -268,13 +268,14 @@ class ConfInspector(object):
     '''
     ## Popularity heatmap
     if popmodel is not None:
-      [xmax, ymax] = popmodel.max_l
-      X, Y = np.mgrid[0:xmax:200j, 0:ymax:200j]
-      positions = np.vstack([X.ravel(), Y.ravel() ] )
-      Z = np.reshape(popmodel.kernel(positions).T, X.shape)
-      plot.imshow(np.rot90(Z), cmap=plot.cm.gist_earth_r, extent=[0, xmax, 0, ymax] )
+      if heatmap_grid_xmax_ymax is None:
+        heatmap_grid, xmax, ymax = gen_pop_heatmap_grid_xmax_ymax(popmodel)
+      else:
+        heatmap_grid, xmax, ymax = heatmap_grid_xmax_ymax
+      
+      plot.imshow(np.rot90(heatmap_grid), cmap=plot.cm.gist_earth_r, extent=[0, xmax, 0, ymax] )
       covered_mass = self.integrate_overcaphyperlane(popmodel.joint_pdf)
-      plot.text(0.6, 0.85, 'Covered mass= {}'.format(covered_mass),
+      plot.text(0.75, 0.9, 'Covered mass= {}'.format(covered_mass),
         horizontalalignment='center', verticalalignment='center', transform = plot.gca().transAxes)
     
     plot.xlim((0, 2.5))
@@ -285,12 +286,12 @@ class ConfInspector(object):
     plot.xlabel(r'$\lambda_a$', fontsize=20)
     plot.ylabel(r'$\lambda_b$', fontsize=20)
     
-    # fig = plot.gcf()
-    # fig.set_size_inches(3, 3)
-    # if savename is None:
-    #   savename = 'plot_servcap_2d_n{}_k{}.png'.format(self.n, self.k)
-    # plot.savefig(savename, bbox_inches='tight') # , bbox_extra_artists=[ax],
-    # fig.clear()
+    fig = plot.gcf()
+    fig.set_size_inches(3, 3)
+    if savename is None:
+      savename = 'plot_servcap_2d_n{}_k{}.png'.format(self.n, self.k)
+    plot.savefig(savename, bbox_inches='tight') # , bbox_extra_artists=[ax],
+    fig.clear()
     log(INFO, "done.")
   
   def util(self, *args):
@@ -347,11 +348,11 @@ class ConfInspector(object):
         # if dist_x_proj > 0.2:
         #   print("---")
         #   blog(x=x.T[0], proj=proj, x_proj=(x.T[0] - proj) )
-        return cost_insidecapregion(proj) + self.cost_ofgoingtocloud*dist_x_proj
+        return (cost_insidecapregion(proj) + self.cost_ofgoingtocloud*dist_x_proj)/np.sum(x.T[0] )
       else:
         return np.nan # 0
     else:
-      return cost_insidecapregion(x.T[0] )
+      return cost_insidecapregion(x.T[0] )/np.sum(x.T[0] )
   
   def moment_cost(self, i, popmodel):
     func = lambda *args: self.cost(*args, compute_outside_cap=True)**i * popmodel.joint_pdf(*args)
@@ -385,7 +386,7 @@ class ConfInspector(object):
     cmap.set_bad(color='white')
     # ax.plot_surface(x_l, y_l, cost_l, rstride=1, cstride=1, cmap='viridis', edgecolor='none')
     # ax.scatter(x_l, y_l, cost_l, c=cost_l, cmap='viridis', lw=0.5)
-    c = ax.pcolormesh(X, Y, cost_m, cmap=cmap, vmin=0, vmax=4 if popmodel is None else 1.5)
+    c = ax.pcolormesh(X, Y, cost_m, cmap=cmap, vmin=0, vmax=1.75 if popmodel is None else 1.5)
     fig.colorbar(c, ax=ax)
     
     if popmodel is not None:
@@ -480,9 +481,15 @@ class ConfInspector(object):
     fig.clear()
     log(INFO, "done;", n=self.n, k=self.k)
 
+def gen_pop_heatmap_grid_xmax_ymax(popmodel):
+  [xmax, ymax] = popmodel.max_l
+  X, Y = np.mgrid[0:xmax:200j, 0:ymax:200j]
+  positions = np.vstack([X.ravel(), Y.ravel() ] )
+  return np.reshape(popmodel.kernel(positions).T, X.shape), xmax, ymax
+
 if __name__ == "__main__":
-  G = mds_conf_matrix(4, k=2)
-  # G = custom_conf_matrix(4, k=2)
+  # G = mds_conf_matrix(4, k=2)
+  G = custom_conf_matrix(4, k=2)
   # G = mds_conf_matrix(4, k=3)
   cf = ConfInspector(G)
   print("cf.to_sysrepr= {}".format(cf.to_sysrepr() ) )
@@ -490,9 +497,9 @@ if __name__ == "__main__":
   # r, M, C = cf.r_M_C()
   # cf.cap_boundary_point_l()
   
-  cf.plot_servcap_2d()
-  # cf.plot_cost_2d()
-  # pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1, 2), arrate_rv=TNormal(1.5, 0.4) )
+  # cf.plot_servcap_2d()
+  cf.plot_cost_2d()
+  # pm = PopModel_wZipf(k=2, zipf_tailindex_rv=TNormal(1, 2), arrate_rv=TNormal(2, 0.4) )
   # cf.plot_servcap_2d(pm)
   # cf.plot_cost_2d(pm)
   

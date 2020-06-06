@@ -7,6 +7,8 @@ if [ $1 = 'i' ]; then
   source /home/mfa51/service-capacity-virtualenv/bin/activate
 elif [ $1 = 'c' ]; then
   $PY cap_finder.py
+elif [ $1 = 't' ]; then
+  $PY tcom_plot.py
 elif [ $1 = 'p' ]; then
   # $PY popularity.py
   $PY paper_plotting.py
