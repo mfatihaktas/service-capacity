@@ -8,7 +8,8 @@ if [ $1 = 'i' ]; then
 elif [ $1 = 'c' ]; then
   $PY cap_finder.py
 elif [ $1 = 't' ]; then
-  $PY tcom_plot.py
+    # $PY tcom_plot.py
+    $PY toit_plots.py
 elif [ $1 = 'p' ]; then
   # $PY popularity.py
   $PY paper_plotting.py

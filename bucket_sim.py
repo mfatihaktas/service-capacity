@@ -65,6 +65,7 @@ def plot_P_Sigma_wchoice():
       # if sim_Pr_robust >= 0.99:
       #   print("*** sim_Pr_robust >= 0.99 when E/C_min <= {}".format(E/C_min) )
         break
+    blog(d=d, E_l=E_l, sim_P_Sigma_l=sim_P_Sigma_l)
     plot.plot(E_l, sim_P_Sigma_l, label='d={}'.format(d), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0.5, ms=7)
     # plot.plot(E_l, sim_P_Sigma_l, label='Sim, d={}'.format(d), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=2, ms=7)
     # plot.plot(E_l, Pr_robust_l, label='d={}'.format(d), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=2, ms=7)

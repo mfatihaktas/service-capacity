@@ -56,7 +56,7 @@ class BucketConfInspector(object):
     
     # obj = cvxpy.Maximize(np.ones((1, self.l))*x)
     obj = cvxpy.Maximize(0)
-    constraints = [self.M*x <= self.C, x >= 0, self.T*x == np.array(ar_l).reshape((self.k, 1)) ]
+    constraints = [self.M @ x <= self.C, x >= 0, self.T @ x == np.array(ar_l).reshape((self.k, 1)) ]
     prob = cvxpy.Problem(obj, constraints)
     try:
       prob.solve()
@@ -70,8 +70,8 @@ class BucketConfInspector(object):
     x = cvxpy.Variable(shape=(self.l, 1), name='x')
     
     # obj = cvxpy.Minimize(cvxpy.norm(self.M*x, "inf") )
-    obj = cvxpy.Minimize(cvxpy.max(self.M*x) )
-    constraints = [x >= 0, self.T*x == np.array(ar_l).reshape((self.k, 1)) ]
+    obj = cvxpy.Minimize(cvxpy.max(self.M @ x) )
+    constraints = [x >= 0, self.T @ x == np.array(ar_l).reshape((self.k, 1)) ]
     prob = cvxpy.Problem(obj, constraints)
     try:
       prob.solve()

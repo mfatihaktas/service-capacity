@@ -63,11 +63,12 @@ def I_wd():
       d_l.append(d)
       
       bci = BucketConfInspector_roundrobin(n, n, C, d)
-      sim_mincap = bci.sim_min_bucketcap_forstability(E, nsamples=10**3) # 10**4
+      sim_mincap = bci.sim_min_bucketcap_forstability(E, nsamples=10**3) # 10**3
       sim_I = sim_mincap/(E/n)
       print("d= {}, sim_I= {}".format(d, sim_I) )
       sim_I_l.append(sim_I)
     plot.plot(d_l, sim_I_l, label=r'$n= {}$'.format(n), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0.5, ms=7)
+    blog(n=n, d_l=d_l, sim_I_l=sim_I_l)
   
   plot_(n=10, ro=0.8)
   plot_(n=100, ro=0.8)
@@ -95,7 +96,7 @@ def compare_I_clustering_vs_rr():
     k = n
     E = n*C*0.8
     
-    nsamples = 10**3 # 10**4
+    nsamples = 10**3
     I_l = []
     for d in d_l:
       if t == 'cl':
@@ -111,6 +112,7 @@ def compare_I_clustering_vs_rr():
       I = bci.sim_min_bucketcap_forstability(E, nsamples)/(E/n)
       blog(I=I)
       I_l.append(I)
+    blog(n=n, d_l=d_l, I_l=I_l)
     plot.plot(d_l, I_l, label='{}, $n= {}$'.format(name, n), c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0.5, ms=7)
   
   # plot_(n=9, d_l=[1, 3], t='cl')
@@ -302,7 +304,7 @@ def compare_I_rr_vs_bibd():
   def plot_(d_l, t):
     log(INFO, ">> d_l= {}, t= {}".format(d_l, t) )
     
-    nsamples = 10**4 # 10**3
+    nsamples = 10**3 # 10**4
     I_l = []
     for d in d_l:
       n = d**2 - d + 1
@@ -322,6 +324,7 @@ def compare_I_rr_vs_bibd():
       # log(INFO, "E/n= {}".format(E/n), I=I)
       log(INFO, "t= {}, d= {}, I= {}".format(t, d, I) )
       I_l.append(I)
+    blog(d_l=d_l, I_l=I_l)
     plot.plot(d_l, I_l, label=name, c=next(dark_color_c), marker=next(marker_c), ls=':', lw=3, mew=0.5, ms=7)
   
   # plot_(d_l=[3], t='rr')

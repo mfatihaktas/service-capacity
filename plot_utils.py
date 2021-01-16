@@ -1,8 +1,13 @@
 import matplotlib
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
-matplotlib.use('Agg')
+# matplotlib.rcParams['pdf.fonttype'] = 42
+# matplotlib.rcParams['ps.fonttype'] = 42
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plot
+plot.rcParams.update(
+  {
+    "text.usetex": True
+  }
+)
 import itertools
 
 from log_utils import *
@@ -23,7 +28,8 @@ skinny_marker_l = ['x', '+', '1', '2', '3', '4']
 mew, ms = 1, 2 # 3, 5
 
 def prettify(ax):
-  plot.tick_params(top='off', right='off', which='both')
+  # plot.tick_params(top='off', right='off', which='both')
+  plot.tick_params(top=False, right=False, which='both')
   ax.patch.set_alpha(0.2)
   ax.spines['right'].set_visible(False)
   ax.spines['top'].set_visible(False)
